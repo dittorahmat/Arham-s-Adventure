@@ -322,6 +322,7 @@ export class ArhamGameEngine {
     this.clearInputs();
     this.rebuildRace(this.subjectFilter);
     this.setGameState('playing');
+    this.sound.startMusic(this.course.timeLimitSeconds, this.course.timeLimitSeconds);
     // Immediately align camera behind Arham so there's no jarring jump
     this.camera.position.set(0, 6.2, 10.2);
     this.camera.lookAt(0, 1.8, -12);
@@ -331,6 +332,7 @@ export class ArhamGameEngine {
   public pauseGame(): void {
     if (this.gameState !== 'playing') return;
     this.clearInputs();
+    this.sound.stopMusic();
     this.setGameState('paused');
   }
 
@@ -340,6 +342,8 @@ export class ArhamGameEngine {
     this.clearInputs();
     this.lastTimestamp = performance.now();
     this.setGameState('playing');
+    const remaining = Math.max(0, this.course.timeLimitSeconds - this.elapsedTime);
+    this.sound.startMusic(remaining, this.course.timeLimitSeconds);
   }
 
   public restartGame(): void {
@@ -348,6 +352,7 @@ export class ArhamGameEngine {
 
   public returnToTitle(): void {
     this.clearInputs();
+    this.sound.stopMusic();
     this.rebuildRace(this.subjectFilter);
     this.setGameState('title');
   }
@@ -927,6 +932,9 @@ export class ArhamGameEngine {
     const rank = standings.findIndex((r) => r.isPlayer) + 1;
     const clearTime = Math.max(1, Math.round(this.elapsedTime));
 
+    // Silence looping race music cleanly before playing victory/timeout fanfare
+    this.sound.stopMusic();
+
     if (outcome === 'victory') {
       // Placement bonus!
       const rankBonus = Math.max(50, (7 - rank) * 50);
@@ -1022,6 +1030,9 @@ export class ArhamGameEngine {
     const rank = standings.findIndex((r) => r.isPlayer) + 1;
     const active = getActiveQuizGate(player.z, this.course);
 
+    const remainingExact = Math.max(0, this.course.timeLimitSeconds - this.elapsedTime);
+    this.sound.updateMusicTime(remainingExact, this.course.timeLimitSeconds);
+
     const hud: HudSnapshot = {
       rank,
       totalRacers: this.racers.length,
@@ -1029,7 +1040,7 @@ export class ArhamGameEngine {
       starsCollected: this.starsCollected,
       totalStars: this.course.stars.length,
       progressPct: computeProgressPct(player.z, this.course.startZ, this.course.finishZ),
-      timeLeft: Math.max(0, Math.ceil(this.course.timeLimitSeconds - this.elapsedTime)),
+      timeLeft: Math.ceil(remainingExact),
       elapsedTime: Math.floor(this.elapsedTime),
       streak: this.streak,
       correctCount: this.correctCount,
@@ -1413,6 +1424,9 @@ export class ArhamGameEngine {
   private handleVisibilityChange = (): void => {
     if (document.hidden) {
       this.clearInputs();
+      this.sound.setSuspendedForBackground(true);
+    } else {
+      this.sound.setSuspendedForBackground(false);
     }
   };
 
@@ -1430,6 +1444,7 @@ export class ArhamGameEngine {
 
   public dispose(): void {
     this.disposed = true;
+    this.sound.dispose();
     cancelAnimationFrame(this.frameId);
     window.clearTimeout(this.frameId);
     window.removeEventListener('keydown', this.handleKeyDown);
