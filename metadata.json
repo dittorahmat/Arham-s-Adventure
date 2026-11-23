@@ -1,0 +1,6 @@
+{
+  "name": "Arham's Adventure",
+  "description": "Game balap halang rintang 3D seru ala Stumble Guys dengan tantangan kuis pelajaran kelas 5 SD (Matematika, IPA, IPS & PPKn, dan Bahasa Indonesia).",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
