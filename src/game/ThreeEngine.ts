@@ -27,6 +27,7 @@ import {
   createStarPickup,
   QuizGateVisual,
 } from './models';
+import { ParticleVfxSystem } from './particles';
 import {
   computeAiInput,
   computeProgressPct,
@@ -47,11 +48,13 @@ import {
   createSurfaceBumpTexture,
   createTrackTileTexture,
 } from './textures';
+import { stepFallingTiles } from './tileFall';
 import {
   AchievementId,
   AchievementProfile,
   AnsweredReviewItem,
   CourseLayout,
+  GameMode,
   GameOverSnapshot,
   GameState,
   HudSnapshot,
@@ -60,19 +63,6 @@ import {
   RacerState,
   SubjectFilter,
 } from './types';
-
-interface ParticleSlot {
-  active: boolean;
-  x: number;
-  y: number;
-  z: number;
-  vx: number;
-  vy: number;
-  vz: number;
-  life: number;
-  maxLife: number;
-  scale: number;
-}
 
 export interface EngineCallbacks {
   onStateChange: (state: GameState) => void;
@@ -85,8 +75,8 @@ const BEST_SCORE_STORAGE_KEY = 'arham_adventure_best_score_v1';
 
 const _vec3A = new THREE.Vector3();
 const _vec3B = new THREE.Vector3();
-const _dummy = new THREE.Object3D();
-const _color = new THREE.Color();
+const _tileDummy = new THREE.Object3D();
+const _tileColor = new THREE.Color();
 
 function detectSoftwareGl(): boolean {
   try {
@@ -121,13 +111,13 @@ export class ArhamGameEngine {
   private bumperMeshes = new Map<string, { group: THREE.Group; bounceAnim: number }>();
   private starMeshes = new Map<string, THREE.Group>();
   private gateVisuals: QuizGateVisual[] = [];
+  private tileCapMesh: THREE.InstancedMesh | null = null;
+  private tileBaseMesh: THREE.InstancedMesh | null = null;
   private finishTrophy: THREE.Group | null = null;
   private balloons: THREE.Group[] = [];
 
-  // Pooled particle system (zero GC inside loop)
-  private particlesMesh: THREE.InstancedMesh;
-  private particles: ParticleSlot[] = [];
-  private particleCursor = 0;
+  // Pooled multi-layer InstancedMesh particle & shockwave VFX system
+  private particleVfx: ParticleVfxSystem;
 
   // Shared procedural textures
   private shadowTex: THREE.CanvasTexture;
@@ -136,6 +126,7 @@ export class ArhamGameEngine {
 
   // Game state & loop
   private gameState: GameState = 'title';
+  private gameMode: GameMode = 'classic';
   private subjectFilter: SubjectFilter = 'semua';
   private elapsedTime = 0;
   private worldTime = 0;
@@ -259,33 +250,8 @@ export class ArhamGameEngine {
     this.bumpTex = createSurfaceBumpTexture();
     this.scene.add(this.courseGroup);
 
-    // 8. Pooled Particle System (150 cubes via InstancedMesh)
-    const pGeo = new THREE.BoxGeometry(0.28, 0.28, 0.28);
-    const pMat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.35, metalness: 0.1 });
-    this.particlesMesh = new THREE.InstancedMesh(pGeo, pMat, 150);
-    this.particlesMesh.frustumCulled = false;
-    this.scene.add(this.particlesMesh);
-    for (let i = 0; i < 150; i++) {
-      this.particles.push({
-        active: false,
-        x: 0,
-        y: -100,
-        z: 0,
-        vx: 0,
-        vy: 0,
-        vz: 0,
-        life: 0,
-        maxLife: 1,
-        scale: 0,
-      });
-      _dummy.position.set(0, -100, 0);
-      _dummy.scale.setScalar(0.0001);
-      _dummy.updateMatrix();
-      this.particlesMesh.setMatrixAt(i, _dummy.matrix);
-      this.particlesMesh.setColorAt(i, _color.setHex(0xfacc15));
-    }
-    this.particlesMesh.instanceMatrix.needsUpdate = true;
-    if (this.particlesMesh.instanceColor) this.particlesMesh.instanceColor.needsUpdate = true;
+    // 8. Pooled Multi-Layer Particle & Shockwave VFX System
+    this.particleVfx = new ParticleVfxSystem(this.scene);
 
     // 9. Build Initial Course & Racers
     this.rebuildRace('semua');
@@ -312,15 +278,31 @@ export class ArhamGameEngine {
   public setSubjectFilter(subject: SubjectFilter): void {
     this.subjectFilter = subject;
     if (this.gameState === 'title') {
-      this.rebuildRace(subject);
+      this.rebuildRace(subject, this.gameMode);
     }
   }
 
-  public startGame(subject?: SubjectFilter): void {
+  public setGameMode(mode: GameMode): void {
+    this.gameMode = mode;
+    if (this.gameState === 'title') {
+      this.rebuildRace(this.subjectFilter, mode);
+    }
+  }
+
+  public startGame(subject?: SubjectFilter, mode?: GameMode): void {
     this.sound.unlock();
     if (subject) this.subjectFilter = subject;
+    if (mode) this.gameMode = mode;
     this.clearInputs();
-    this.rebuildRace(this.subjectFilter);
+    this.rebuildRace(this.subjectFilter, this.gameMode);
+    if (this.gameMode === 'tile_fall') {
+      this.feedback = {
+        kind: 'correct',
+        headline: 'Mode Lantai Jebakan (Tile Fall)!',
+        detail: 'Cari ubin hijau yang aman — hati-hati ubin palsu jatuh!',
+        timer: 3.2,
+      };
+    }
     this.setGameState('playing');
     this.sound.startMusic(this.course.timeLimitSeconds, this.course.timeLimitSeconds);
     // Immediately align camera behind Arham so there's no jarring jump
@@ -347,13 +329,13 @@ export class ArhamGameEngine {
   }
 
   public restartGame(): void {
-    this.startGame(this.subjectFilter);
+    this.startGame(this.subjectFilter, this.gameMode);
   }
 
   public returnToTitle(): void {
     this.clearInputs();
     this.sound.stopMusic();
-    this.rebuildRace(this.subjectFilter);
+    this.rebuildRace(this.subjectFilter, this.gameMode);
     this.setGameState('title');
   }
 
@@ -400,7 +382,7 @@ export class ArhamGameEngine {
     this.virtualJumpHeld = false;
   }
 
-  private rebuildRace(subject: SubjectFilter): void {
+  private rebuildRace(subject: SubjectFilter, mode: GameMode = this.gameMode): void {
     // Dispose old course meshes cleanly
     this.clearGroup(this.courseGroup);
     this.platformMeshes.clear();
@@ -408,11 +390,13 @@ export class ArhamGameEngine {
     this.bumperMeshes.clear();
     this.starMeshes.clear();
     this.gateVisuals = [];
+    this.tileCapMesh = null;
+    this.tileBaseMesh = null;
     this.racerRigs = [];
     this.finishTrophy = null;
 
     const questions = selectRaceQuestions(subject, 5);
-    this.course = createCourseLayout(questions);
+    this.course = createCourseLayout(questions, mode);
     this.racers = createInitialRacers();
 
     this.elapsedTime = 0;
@@ -552,15 +536,44 @@ export class ArhamGameEngine {
       this.starMeshes.set(star.id, mesh);
     }
 
-    // 5 Quiz Gates
+    // Falling / Fake Tiles (2 zero-GC InstancedMeshes: glossy cap + dark beveled pedestal)
+    if (this.course.fallingTiles.length > 0) {
+      const count = this.course.fallingTiles.length;
+      const tileSize = this.course.fallingTiles[0].size;
+      const capGeo = new THREE.BoxGeometry(tileSize, 0.24, tileSize);
+      const capMat = new THREE.MeshStandardMaterial({
+        color: 0xffffff,
+        roughness: 0.28,
+        metalness: 0.08,
+      });
+      this.tileCapMesh = new THREE.InstancedMesh(capGeo, capMat, count);
+      this.tileCapMesh.frustumCulled = false;
+      this.tileCapMesh.receiveShadow = true;
+
+      const baseGeo = new THREE.BoxGeometry(tileSize * 0.9, 0.34, tileSize * 0.9);
+      const baseMat = new THREE.MeshStandardMaterial({
+        color: 0x1e293b,
+        roughness: 0.56,
+        metalness: 0.14,
+      });
+      this.tileBaseMesh = new THREE.InstancedMesh(baseGeo, baseMat, count);
+      this.tileBaseMesh.frustumCulled = false;
+
+      this.courseGroup.add(this.tileCapMesh, this.tileBaseMesh);
+      this.syncFallingTilesVisuals();
+    }
+
+    // Quiz Gates (5 in Classic mode, 3 checkpoints in Tile Fall mode)
     for (const gate of this.course.quizGates) {
       const vis = createQuizGateVisual(gate, this.maxAniso);
       this.courseGroup.add(vis.group);
       this.gateVisuals.push(vis);
     }
 
-    // Towering Finish Arch & Golden Trophy
-    const finish = createFinishArch(1.1, this.course.finishZ - 1.5, this.maxAniso);
+    // Towering Finish Arch & Golden Trophy (grounded dynamically to finish deck height)
+    const finishDeckY =
+      this.course.platforms.find((p) => p.kind === 'finish')?.y ?? 1.1;
+    const finish = createFinishArch(finishDeckY, this.course.finishZ - 1.5, this.maxAniso);
     this.courseGroup.add(finish.group);
     this.finishTrophy = finish.trophy;
 
@@ -592,70 +605,6 @@ export class ArhamGameEngine {
           });
         }
       });
-    }
-  }
-
-  private spawnParticles(
-    x: number,
-    y: number,
-    z: number,
-    count: number,
-    colors: number[],
-    speed = 6.5,
-  ): void {
-    for (let i = 0; i < count; i++) {
-      const slot = this.particles[this.particleCursor];
-      this.particleCursor = (this.particleCursor + 1) % this.particles.length;
-
-      const angle = Math.random() * Math.PI * 2;
-      const spd = speed * (0.45 + Math.random() * 0.75);
-      slot.active = true;
-      slot.x = x + (Math.random() - 0.5) * 0.4;
-      slot.y = y + Math.random() * 0.4;
-      slot.z = z + (Math.random() - 0.5) * 0.4;
-      slot.vx = Math.cos(angle) * spd;
-      slot.vy = 2.8 + Math.random() * speed * 0.85;
-      slot.vz = Math.sin(angle) * spd;
-      slot.maxLife = 0.45 + Math.random() * 0.45;
-      slot.life = slot.maxLife;
-      slot.scale = 0.65 + Math.random() * 0.75;
-
-      _color.setHex(colors[i % colors.length]);
-      this.particlesMesh.setColorAt(this.particleCursor === 0 ? this.particles.length - 1 : this.particleCursor - 1, _color);
-    }
-    if (this.particlesMesh.instanceColor) {
-      this.particlesMesh.instanceColor.needsUpdate = true;
-    }
-  }
-
-  private updateParticles(dt: number): void {
-    let anyDirty = false;
-    for (let i = 0; i < this.particles.length; i++) {
-      const p = this.particles[i];
-      if (!p.active) continue;
-      anyDirty = true;
-      p.life -= dt;
-      if (p.life <= 0) {
-        p.active = false;
-        _dummy.position.set(0, -100, 0);
-        _dummy.scale.setScalar(0.0001);
-        _dummy.updateMatrix();
-        this.particlesMesh.setMatrixAt(i, _dummy.matrix);
-        continue;
-      }
-      p.vy -= 18 * dt;
-      p.x += p.vx * dt;
-      p.y += p.vy * dt;
-      p.z += p.vz * dt;
-      const ratio = p.life / p.maxLife;
-      _dummy.position.set(p.x, p.y, p.z);
-      _dummy.rotation.set(p.life * 7, p.life * 5, 0);
-      _dummy.scale.setScalar(p.scale * ratio);
-      _dummy.updateMatrix();
-      this.particlesMesh.setMatrixAt(i, _dummy.matrix);
-    }
-    if (anyDirty) {
-      this.particlesMesh.instanceMatrix.needsUpdate = true;
     }
   }
 
@@ -693,19 +642,19 @@ export class ArhamGameEngine {
         case 'jump':
           if (ev.isPlayer) {
             this.sound.playJump();
-            this.spawnParticles(ev.x, ev.y + 0.1, ev.z, 5, [0xffffff, 0xe0f2fe], 3.2);
+            this.particleVfx.emitSimpleBurst(ev.x, ev.y + 0.1, ev.z, 5, [0xffffff, 0xe0f2fe], 3.2, 'debris');
           }
           break;
         case 'land':
           if (ev.isPlayer) {
             this.sound.playLand();
-            this.spawnParticles(ev.x, ev.y + 0.1, ev.z, 5, [0xfef08a, 0xffffff], 2.8);
+            this.particleVfx.emitSimpleBurst(ev.x, ev.y + 0.1, ev.z, 5, [0xfef08a, 0xffffff], 2.8, 'debris');
           }
           break;
         case 'dive':
           if (ev.isPlayer) {
             this.sound.playDive();
-            this.spawnParticles(ev.x, ev.y + 0.4, ev.z, 8, [0x38bdf8, 0xffffff], 5.0);
+            this.particleVfx.emitSimpleBurst(ev.x, ev.y + 0.4, ev.z, 8, [0x38bdf8, 0xffffff], 5.0, 'spark');
           }
           break;
         case 'bumper': {
@@ -715,7 +664,7 @@ export class ArhamGameEngine {
             this.sound.playBumper();
             this.hitstopTimer = 0.038;
             this.cameraTrauma = Math.min(1, this.cameraTrauma + 0.55);
-            this.spawnParticles(ev.x, ev.y, ev.z, 14, [0xfb7185, 0xfacc15, 0xffffff], 7.5);
+            this.particleVfx.emitHurdleImpact(ev.x, ev.y, ev.z, 'bumper');
           }
           break;
         }
@@ -724,13 +673,13 @@ export class ArhamGameEngine {
             this.sound.playSweeperHit();
             this.hitstopTimer = 0.055;
             this.cameraTrauma = Math.min(1, this.cameraTrauma + 0.72);
-            this.spawnParticles(ev.x, ev.y, ev.z, 18, [0xfacc15, 0xf472b6, 0xffffff], 8.5);
+            this.particleVfx.emitHurdleImpact(ev.x, ev.y, ev.z, 'sweeper');
           }
           break;
         case 'speedpad':
           if (ev.isPlayer) {
             this.sound.playSpeedPad();
-            this.spawnParticles(ev.x, ev.y + 0.3, ev.z, 10, [0x22d3ee, 0xfde047], 6.0);
+            this.particleVfx.emitSimpleBurst(ev.x, ev.y + 0.3, ev.z, 10, [0x22d3ee, 0xfde047], 6.0, 'spark');
           }
           break;
         case 'star':
@@ -738,7 +687,7 @@ export class ArhamGameEngine {
             this.starsCollected += 1;
             this.score += 50;
             this.sound.playStar();
-            this.spawnParticles(ev.x, ev.y, ev.z, 14, [0xfacc15, 0xfef08a, 0xffffff], 6.8);
+            this.particleVfx.emitSimpleBurst(ev.x, ev.y, ev.z, 14, [0xfacc15, 0xfef08a, 0xffffff], 6.8, 'spark');
             const starChallenge = this.recordDailyProgress({ type: 'star_collected', count: 1 });
             if (starChallenge.newlyCompleted.length > 0) {
               const titleList = starChallenge.newlyCompleted.map((c) => c.title).join(', ');
@@ -755,7 +704,7 @@ export class ArhamGameEngine {
           break;
         case 'quiz_correct': {
           const gate = this.course.quizGates[ev.gateIndex];
-          this.spawnParticles(ev.x, ev.y, ev.z, 26, [0x4ade80, 0xfacc15, 0x38bdf8, 0xf472b6], 9.5);
+          this.particleVfx.emitQuizGateClear(ev.x, ev.y, ev.z, ev.firstTry);
           if (ev.isPlayer) {
             this.sound.playQuizCorrect();
             this.hitstopTimer = 0.042;
@@ -835,7 +784,7 @@ export class ArhamGameEngine {
             this.sound.playQuizWrong();
             this.hitstopTimer = 0.05;
             this.cameraTrauma = Math.min(1, this.cameraTrauma + 0.6);
-            this.spawnParticles(ev.x, ev.y, ev.z, 16, [0xef4444, 0xfca5a5, 0xffffff], 7.5);
+            this.particleVfx.emitHurdleImpact(ev.x, ev.y, ev.z, 'wrong_door');
             this.feedback = {
               kind: 'wrong',
               headline: 'Ups, pintu terkunci! Coba pintu lainnya!',
@@ -846,10 +795,29 @@ export class ArhamGameEngine {
           }
           break;
         }
+        case 'tile_safe':
+          if (ev.isPlayer) {
+            this.score += 10;
+            this.sound.playTileSafe();
+            this.particleVfx.emitSimpleBurst(ev.x, ev.y + 0.15, ev.z, 8, [0x22c55e, 0x86efac, 0xfef08a], 4.4, 'spark');
+            forceHud = true;
+          } else {
+            this.particleVfx.emitSimpleBurst(ev.x, ev.y + 0.15, ev.z, 4, [0x22c55e, 0x86efac], 3.2, 'spark');
+          }
+          break;
+        case 'tile_fake':
+          if (ev.isPlayer) {
+            this.sound.playTileBreak();
+            this.cameraTrauma = Math.min(1, this.cameraTrauma + 0.35);
+            this.particleVfx.emitHurdleImpact(ev.x, ev.y + 0.15, ev.z, 'bumper');
+          } else {
+            this.particleVfx.emitSimpleBurst(ev.x, ev.y + 0.15, ev.z, 10, [0xef4444, 0xfb923c, 0xfef08a], 5.8, 'debris');
+          }
+          break;
         case 'respawn':
           if (ev.isPlayer) {
             this.sound.playRespawn();
-            this.spawnParticles(ev.x, ev.y, ev.z, 12, [0x38bdf8, 0xffffff], 5.5);
+            this.particleVfx.emitSimpleBurst(ev.x, ev.y, ev.z, 12, [0x38bdf8, 0xffffff], 5.5, 'spark');
             forceHud = true;
           }
           break;
@@ -940,7 +908,7 @@ export class ArhamGameEngine {
       const rankBonus = Math.max(50, (7 - rank) * 50);
       this.score += rankBonus;
       this.sound.playVictory();
-      this.spawnParticles(player.x, player.y + 1.5, player.z, 34, [0xfacc15, 0x4ade80, 0x38bdf8, 0xf472b6], 10);
+      this.particleVfx.emitQuizGateClear(player.x, player.y + 0.6, player.z, true);
 
       // Update Daily Challenges race-finish milestones (awards bonus points into score)
       this.recordDailyProgress({
@@ -1034,6 +1002,7 @@ export class ArhamGameEngine {
     this.sound.updateMusicTime(remainingExact, this.course.timeLimitSeconds);
 
     const hud: HudSnapshot = {
+      mode: this.course.mode,
       rank,
       totalRacers: this.racers.length,
       score: Math.round(this.score),
@@ -1062,6 +1031,79 @@ export class ArhamGameEngine {
     this.callbacks.onHudUpdate(hud);
   }
 
+  private syncFallingTilesVisuals(): void {
+    if (!this.tileCapMesh || !this.tileBaseMesh) return;
+    const tiles = this.course.fallingTiles;
+    const t = this.worldTime;
+
+    for (let i = 0; i < tiles.length; i++) {
+      const tile = tiles[i];
+
+      if (tile.state === 'gone') {
+        _tileDummy.position.set(0, -120, 0);
+        _tileDummy.rotation.set(0, 0, 0);
+        _tileDummy.scale.setScalar(0.0001);
+        _tileDummy.updateMatrix();
+        this.tileCapMesh.setMatrixAt(i, _tileDummy.matrix);
+        this.tileBaseMesh.setMatrixAt(i, _tileDummy.matrix);
+        continue;
+      }
+
+      let offsetX = 0;
+      let offsetY = 0;
+      let offsetZ = 0;
+      let rx = tile.rotX;
+      let rz = tile.rotZ;
+
+      if (tile.state === 'safe_revealed') {
+        offsetY = Math.sin(tile.revealPop * Math.PI) * 0.16;
+        _tileColor.setHex(0x16a34a); // Vivid emerald green safe path!
+      } else if (tile.state === 'shaking') {
+        offsetX = Math.sin(t * 58 + i) * 0.11;
+        offsetZ = Math.cos(t * 54 + i) * 0.11;
+        rx = Math.sin(t * 48 + i) * 0.14;
+        rz = Math.cos(t * 46 + i) * 0.14;
+        _tileColor.setHex(0xdc2626); // Bright crimson crack telegraph!
+      } else if (tile.state === 'falling') {
+        _tileColor.setHex(0xdc2626);
+      } else {
+        // Hidden mystery tile: high-contrast Stumble Guys amber-gold & royal-indigo checkerboard
+        const isCheckerA = (tile.row + tile.col) % 2 === 0;
+        _tileColor.setHex(isCheckerA ? 0xf59e0b : 0x6366f1);
+
+        // Subtle periodic Tip-Toe micro-shudder tell on unrevealed fake tiles
+        if (!tile.isSafe) {
+          const tell = Math.sin(t * 1.35 + tile.hintPhase);
+          if (tell > 0.965) {
+            rx = Math.sin(t * 40 + i) * 0.055;
+            rz = Math.cos(t * 36 + i) * 0.055;
+          }
+        }
+      }
+
+      // Top glossy tile cap (top flush at tile.y)
+      _tileDummy.position.set(tile.x + offsetX, tile.y - 0.12 + offsetY, tile.z + offsetZ);
+      _tileDummy.rotation.set(rx, 0, rz);
+      _tileDummy.scale.set(1, 1, 1);
+      _tileDummy.updateMatrix();
+      this.tileCapMesh.setMatrixAt(i, _tileDummy.matrix);
+      this.tileCapMesh.setColorAt(i, _tileColor);
+
+      // Dark navy beveled under-pedestal beneath the cap
+      _tileDummy.position.set(tile.x + offsetX, tile.y - 0.4 + offsetY, tile.z + offsetZ);
+      _tileDummy.rotation.set(rx, 0, rz);
+      _tileDummy.scale.set(1, 1, 1);
+      _tileDummy.updateMatrix();
+      this.tileBaseMesh.setMatrixAt(i, _tileDummy.matrix);
+    }
+
+    this.tileCapMesh.instanceMatrix.needsUpdate = true;
+    if (this.tileCapMesh.instanceColor) {
+      this.tileCapMesh.instanceColor.needsUpdate = true;
+    }
+    this.tileBaseMesh.instanceMatrix.needsUpdate = true;
+  }
+
   private syncVisuals(dt: number): void {
     // 1. Dynamic Platforms (Moving Wooden Rulers)
     const animTime = this.gameState === 'playing' ? this.elapsedTime : this.worldTime;
@@ -1072,6 +1114,11 @@ export class ArhamGameEngine {
           mesh.position.x = getPlatformDynamicState(plat, animTime).x;
         }
       }
+    }
+
+    // 1b. Falling / Fake Tiles InstancedMesh animation & color states
+    if (this.tileCapMesh && this.tileBaseMesh && this.course.fallingTiles.length > 0) {
+      this.syncFallingTilesVisuals();
     }
 
     // 2. Rotating Pencil Sweepers
@@ -1305,6 +1352,21 @@ export class ArhamGameEngine {
             stepRacerPhysics(this.racers[i], aiIn, this.course, dt, this.elapsedTime, events);
           }
 
+          if (this.course.fallingTiles.length > 0) {
+            const tileStep = stepFallingTiles(this.course.fallingTiles, dt);
+            for (const fallen of tileStep.newlyFallenTiles) {
+              this.particleVfx.emitSimpleBurst(
+                fallen.x,
+                fallen.baseY + 0.1,
+                fallen.z,
+                12,
+                [0xef4444, 0xf97316, 0xfef08a, 0x1e293b],
+                6.2,
+                'debris',
+              );
+            }
+          }
+
           if (events.length > 0) {
             this.processEvents(events);
           }
@@ -1318,7 +1380,7 @@ export class ArhamGameEngine {
       }
     }
 
-    this.updateParticles(dt);
+    this.particleVfx.update(dt);
     this.syncVisuals(dt);
     this.updateCamera(dt);
 
@@ -1454,6 +1516,7 @@ export class ArhamGameEngine {
     this.renderer.domElement.removeEventListener('webglcontextlost', this.handleContextLost);
     this.resizeObserver.disconnect();
     this.clearGroup(this.courseGroup);
+    this.particleVfx.dispose();
     this.shadowTex.dispose();
     this.bumpTex.dispose();
     this.envRenderTarget?.dispose();

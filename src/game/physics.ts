@@ -1,6 +1,12 @@
 import {
+  computeTileFallAiGuidance,
+  findSupportingTile,
+  triggerTileStep,
+} from './tileFall';
+import {
   BumperDef,
   CourseLayout,
+  FallingTileDef,
   InputState,
   PlatformDef,
   QuizGateDef,
@@ -54,6 +60,8 @@ export type PhysicsEvent =
       y: number;
       z: number;
     }
+  | { type: 'tile_safe'; isPlayer: boolean; tileId: string; x: number; y: number; z: number }
+  | { type: 'tile_fake'; isPlayer: boolean; tileId: string; x: number; y: number; z: number }
   | { type: 'respawn'; isPlayer: boolean; x: number; y: number; z: number }
   | { type: 'finish'; isPlayer: boolean; racerId: string; finishTime: number };
 
@@ -82,7 +90,8 @@ export function getSweeperAngle(speed: number, phase: number, time: number): num
 export interface GroundHit {
   surfaceY: number;
   carryVx: number;
-  platform: PlatformDef;
+  platform?: PlatformDef;
+  tile?: FallingTileDef;
 }
 
 export function findSupportingPlatform(
@@ -111,6 +120,14 @@ export function findSupportingPlatform(
       }
     }
   }
+
+  if (course.fallingTiles.length > 0) {
+    const tileHit = findSupportingTile(x, y, prevY, z, course.fallingTiles, margin * 0.7);
+    if (tileHit && (!best || tileHit.baseY >= best.surfaceY)) {
+      best = { surfaceY: tileHit.baseY, carryVx: 0, tile: tileHit };
+    }
+  }
+
   return best;
 }
 
@@ -275,6 +292,29 @@ export function stepRacerPhysics(
     racer.vy = 0;
     racer.grounded = true;
     racer.x += groundHit.carryVx * clampedDt;
+
+    if (groundHit.tile) {
+      const outcome = triggerTileStep(groundHit.tile);
+      if (outcome === 'safe_revealed') {
+        events.push({
+          type: 'tile_safe',
+          isPlayer: racer.isPlayer,
+          tileId: groundHit.tile.id,
+          x: groundHit.tile.x,
+          y: groundHit.tile.baseY + 0.1,
+          z: groundHit.tile.z,
+        });
+      } else if (outcome === 'fake_triggered') {
+        events.push({
+          type: 'tile_fake',
+          isPlayer: racer.isPlayer,
+          tileId: groundHit.tile.id,
+          x: groundHit.tile.x,
+          y: groundHit.tile.baseY + 0.1,
+          z: groundHit.tile.z,
+        });
+      }
+    }
 
     if (wasAirborne && impact > 4.5) {
       racer.squashX = 1.24;
@@ -546,8 +586,9 @@ export function computeAiInput(
   let wantJump = false;
   let wantDive = false;
 
-  // 1. Check upcoming Quiz Gate within 24m
-  const nextGate = course.quizGates.find((g) => g.z < racer.z + 1.0 && racer.z - g.z < 24);
+  // 1. Check upcoming Quiz Gate within 15m (or 24m in classic mode)
+  const gateLookahead = course.mode === 'tile_fall' ? 11.5 : 24;
+  const nextGate = course.quizGates.find((g) => g.z < racer.z + 1.0 && racer.z - g.z < gateLookahead);
   if (nextGate) {
     if (racer.aiDecisionGate !== nextGate.gateIndex) {
       racer.aiDecisionGate = nextGate.gateIndex;
@@ -563,8 +604,20 @@ export function computeAiInput(
     }
     const chosenDoor = nextGate.doors[racer.aiChosenDoor] ?? nextGate.doors[nextGate.question.correctIndex];
     targetX = chosenDoor.x;
+  } else if (course.fallingTiles.length > 0) {
+    // 2a. Tile Fall AI guidance: read revealed safe tiles or boldly scout ahead
+    const tileGuide = computeTileFallAiGuidance(racer, course.fallingTiles);
+    if (tileGuide) {
+      targetX = tileGuide.targetX;
+      speedFactor = tileGuide.speedFactor;
+      if (tileGuide.wantJump && racer.grounded) {
+        wantJump = true;
+      }
+    } else {
+      targetX = ((racer.name.charCodeAt(0) % 5) - 2) * 1.4;
+    }
   } else {
-    // 2. Align with moving ruler bridges if ahead
+    // 2b. Align with moving ruler bridges if ahead
     const upcomingBridge = course.platforms.find(
       (p) =>
         p.kind === 'ruler_bridge' &&

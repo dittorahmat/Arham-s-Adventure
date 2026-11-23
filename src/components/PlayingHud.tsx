@@ -180,6 +180,17 @@ export const PlayingHud: React.FC<PlayingHudProps> = ({
               Terjang {hud.diveReadyPct === 100 ? 'Siap [Shift]' : `${hud.diveReadyPct}%`}
             </span>
 
+            {hud.mode === 'tile_fall' && (
+              <>
+                <span aria-hidden="true" className="text-[#94a3b8]">
+                  ·
+                </span>
+                <span className="font-extrabold text-[#7c3aed]" data-testid="hud-mode">
+                  Tile Fall
+                </span>
+              </>
+            )}
+
             {hud.streak > 0 && (
               <>
                 <span aria-hidden="true" className="text-[#94a3b8]">

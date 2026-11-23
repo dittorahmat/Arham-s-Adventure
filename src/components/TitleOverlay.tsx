@@ -6,12 +6,15 @@ import {
   loadLeaderboard,
 } from '../game/leaderboard';
 import { SUBJECT_LABELS } from '../game/questions';
-import { SubjectFilter } from '../game/types';
+import { GAME_MODE_LIST, GAME_MODE_META } from '../game/tileFall';
+import { GameMode, SubjectFilter } from '../game/types';
 import { ArhamSprite } from './ArhamSprite';
 import { DailyChallengesModal } from './DailyChallengesModal';
 import { TopScoresModal } from './TopScoresModal';
 
 interface TitleOverlayProps {
+  selectedMode: GameMode;
+  onSelectMode: (mode: GameMode) => void;
   selectedSubject: SubjectFilter;
   onSelectSubject: (subject: SubjectFilter) => void;
   onStart: () => void;
@@ -20,6 +23,8 @@ interface TitleOverlayProps {
 const SUBJECT_LIST: SubjectFilter[] = ['semua', 'matematika', 'ipa', 'ips', 'bahasa'];
 
 export const TitleOverlay: React.FC<TitleOverlayProps> = ({
+  selectedMode,
+  onSelectMode,
   selectedSubject,
   onSelectSubject,
   onStart,
@@ -135,35 +140,113 @@ export const TitleOverlay: React.FC<TitleOverlayProps> = ({
           </p>
         </div>
 
-        {/* Subject Filter Segmented Selector */}
-        <div className="pointer-events-auto w-full max-w-xl rounded-2xl border-[3px] border-[#1e293b] bg-[#fffdf5]/95 p-3 toy-panel">
-          <div className="mb-2 flex items-center justify-between text-xs font-bold text-[#334155]">
-            <span>Pilih Mata Pelajaran Kelas 5 SD</span>
-            <span>5 Gerbang Kuis</span>
+        {/* Game Mode + Subject Filter Compact Toy Setup Panel */}
+        <div className="pointer-events-auto w-full max-w-xl space-y-3 rounded-2xl border-[3px] border-[#1e293b] bg-[#fffdf5]/95 p-3 toy-panel">
+          {/* Mode Selector: Balap Klasik vs Lantai Jebakan (Tile Fall) */}
+          <div>
+            <div className="mb-1.5 flex items-center justify-between text-xs font-bold text-[#334155]">
+              <span>Pilih Mode Balapan</span>
+              <span className="text-[#2563eb]">
+                {selectedMode === 'tile_fall' ? 'Tile Fall · Stumble!' : 'Lintasan Rintangan'}
+              </span>
+            </div>
+            <div
+              className="grid grid-cols-1 gap-2 sm:grid-cols-2"
+              role="radiogroup"
+              aria-label="Pilih Mode Balapan"
+            >
+              {GAME_MODE_LIST.map((modeId) => {
+                const meta = GAME_MODE_META[modeId];
+                const active = selectedMode === modeId;
+                const isTileFall = modeId === 'tile_fall';
+                return (
+                  <button
+                    key={modeId}
+                    type="button"
+                    role="radio"
+                    aria-checked={active}
+                    data-testid={`mode-${modeId}`}
+                    onClick={(e) => {
+                      onSelectMode(modeId);
+                      e.currentTarget.blur();
+                    }}
+                    className={`flex cursor-pointer items-center gap-2.5 rounded-xl border-2 px-3 py-2 text-left transition-transform ${
+                      active
+                        ? isTileFall
+                          ? 'border-[#1e293b] bg-[#7c3aed] text-white shadow-[0_3px_0_#1e293b]'
+                          : 'border-[#1e293b] bg-[#2563eb] text-white shadow-[0_3px_0_#1e293b]'
+                        : 'border-[#cbd5e1] bg-white text-[#1e293b] hover:border-[#64748b] hover:bg-[#f1f5f9]'
+                    }`}
+                  >
+                    <span
+                      className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border-2 border-[#1e293b] ${
+                        isTileFall ? 'bg-[#fde047]' : 'bg-[#bae6fd]'
+                      }`}
+                    >
+                      {isTileFall ? (
+                        <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" aria-hidden="true">
+                          <rect x="3" y="4" width="8" height="6" rx="1.5" fill="#22c55e" stroke="#1e293b" strokeWidth="2" />
+                          <rect x="13" y="4" width="8" height="6" rx="1.5" fill="#818cf8" stroke="#1e293b" strokeWidth="2" />
+                          <rect x="3" y="12" width="8" height="6" rx="1.5" fill="#facc15" stroke="#1e293b" strokeWidth="2" />
+                          <g transform="translate(17 17) rotate(18)">
+                            <rect x="-4" y="-3" width="8" height="6" rx="1.5" fill="#ef4444" stroke="#1e293b" strokeWidth="2" />
+                          </g>
+                        </svg>
+                      ) : (
+                        <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" aria-hidden="true">
+                          <path d="M5 19V5h11l-2.2 3.5L16 12H5" fill="#facc15" stroke="#1e293b" strokeWidth="2.2" strokeLinejoin="round" strokeLinecap="round" />
+                          <circle cx="17.5" cy="17.5" r="3" fill="#fb7185" stroke="#1e293b" strokeWidth="2" />
+                        </svg>
+                      )}
+                    </span>
+                    <span className="min-w-0">
+                      <span className="block truncate font-display text-sm font-bold leading-tight">
+                        {meta.label}
+                      </span>
+                      <span
+                        className={`block truncate text-[11px] font-semibold ${
+                          active ? 'text-white/90' : 'text-[#64748b]'
+                        }`}
+                      >
+                        {meta.subtitle}
+                      </span>
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
           </div>
-          <div className="flex flex-wrap gap-1.5 sm:flex-nowrap" role="radiogroup" aria-label="Pilih Mata Pelajaran">
-            {SUBJECT_LIST.map((subj) => {
-              const active = selectedSubject === subj;
-              return (
-                <button
-                  key={subj}
-                  type="button"
-                  role="radio"
-                  aria-checked={active}
-                  onClick={(e) => {
-                    onSelectSubject(subj);
-                    e.currentTarget.blur();
-                  }}
-                  className={`cursor-pointer whitespace-nowrap rounded-xl border-2 px-2.5 py-2 text-xs font-bold transition-transform ${
-                    active
-                      ? 'border-[#1e293b] bg-[#2563eb] text-white shadow-[0_3px_0_#1e293b]'
-                      : 'border-[#cbd5e1] bg-white text-[#1e293b] hover:border-[#64748b] hover:bg-[#f1f5f9]'
-                  }`}
-                >
-                  {SUBJECT_LABELS[subj]}
-                </button>
-              );
-            })}
+
+          {/* Subject Filter */}
+          <div className="border-t-2 border-dashed border-[#e2e8f0] pt-2.5">
+            <div className="mb-1.5 flex flex-wrap items-center justify-between gap-x-2 gap-y-0.5 text-xs font-bold text-[#334155]">
+              <span>Pilih Mata Pelajaran Kelas 5 SD</span>
+              <span>{selectedMode === 'tile_fall' ? '3 Cekpoin Kuis · 120 Ubin' : '5 Gerbang Kuis'}</span>
+            </div>
+            <div className="flex flex-wrap gap-1.5 sm:flex-nowrap" role="radiogroup" aria-label="Pilih Mata Pelajaran">
+              {SUBJECT_LIST.map((subj) => {
+                const active = selectedSubject === subj;
+                return (
+                  <button
+                    key={subj}
+                    type="button"
+                    role="radio"
+                    aria-checked={active}
+                    onClick={(e) => {
+                      onSelectSubject(subj);
+                      e.currentTarget.blur();
+                    }}
+                    className={`cursor-pointer whitespace-nowrap rounded-xl border-2 px-2.5 py-2 text-xs font-bold transition-transform ${
+                      active
+                        ? 'border-[#1e293b] bg-[#2563eb] text-white shadow-[0_3px_0_#1e293b]'
+                        : 'border-[#cbd5e1] bg-white text-[#1e293b] hover:border-[#64748b] hover:bg-[#f1f5f9]'
+                    }`}
+                  >
+                    {SUBJECT_LABELS[subj]}
+                  </button>
+                );
+              })}
+            </div>
           </div>
         </div>
 

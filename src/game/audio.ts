@@ -343,6 +343,17 @@ export class SoundEngine {
     this.playTone(185, 130, 0.22, 'triangle', 0.13, 0.12);
   }
 
+  public playTileSafe(): void {
+    const jitter = 0.96 + Math.random() * 0.08;
+    this.playTone(620 * jitter, 880 * jitter, 0.1, 'triangle', 0.11);
+  }
+
+  public playTileBreak(): void {
+    const jitter = 0.92 + Math.random() * 0.14;
+    this.playTone(250 * jitter, 82 * jitter, 0.22, 'sawtooth', 0.13);
+    this.playTone(170 * jitter, 65 * jitter, 0.18, 'triangle', 0.12, 0.04);
+  }
+
   public playRespawn(): void {
     this.playTone(300, 180, 0.15, 'sine', 0.1, 0);
     this.playTone(320, 520, 0.18, 'triangle', 0.11, 0.14);

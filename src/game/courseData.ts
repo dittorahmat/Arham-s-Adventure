@@ -1,7 +1,10 @@
+import { generateTileGrid } from './tileFall';
 import {
   AiPolicy,
   BumperDef,
   CourseLayout,
+  FallingTileDef,
+  GameMode,
   PlatformDef,
   QuizGateDef,
   QuizQuestion,
@@ -104,7 +107,15 @@ function createQuizGate(
   };
 }
 
-export function createCourseLayout(questions: QuizQuestion[]): CourseLayout {
+export function createCourseLayout(
+  questions: QuizQuestion[],
+  mode: GameMode = 'classic',
+  seed = Date.now(),
+): CourseLayout {
+  if (mode === 'tile_fall') {
+    return createTileFallCourseLayout(questions, seed);
+  }
+
   if (questions.length < 5) {
     throw new Error('Course layout requires at least 5 quiz questions.');
   }
@@ -311,7 +322,9 @@ export function createCourseLayout(questions: QuizQuestion[]): CourseLayout {
   ];
 
   return {
+    mode: 'classic',
     platforms,
+    fallingTiles: [],
     sweepers,
     bumpers,
     speedPads,
@@ -320,6 +333,142 @@ export function createCourseLayout(questions: QuizQuestion[]): CourseLayout {
     startZ: 0,
     finishZ: -245,
     timeLimitSeconds: 180,
+  };
+}
+
+function createTileFallCourseLayout(questions: QuizQuestion[], seed: number): CourseLayout {
+  if (questions.length < 3) {
+    throw new Error('Tile Fall layout requires at least 3 quiz questions.');
+  }
+
+  const platforms: PlatformDef[] = [
+    // Start Plaza (z: +6.0 to -8.8) — racers face directly onto Tile Grid 1!
+    {
+      id: 'tf-start',
+      x: 0,
+      y: 0,
+      z: -1.4,
+      width: 16,
+      height: 2.4,
+      length: 14.8,
+      kind: 'start',
+      colorHex: 0x0ea5e9,
+    },
+    // Checkpoint Plaza 1 after Grid 1 (z: -26.8 to -40.4)
+    {
+      id: 'tf-plaza-1',
+      x: 0,
+      y: 0,
+      z: -33.6,
+      width: 16,
+      height: 2.4,
+      length: 13.6,
+      kind: 'quiz_plaza',
+      colorHex: 0x10b981,
+    },
+    // Checkpoint Plaza 2 after Grid 2 (z: -64.6 to -78.4)
+    {
+      id: 'tf-plaza-2',
+      x: 0,
+      y: 0.2,
+      z: -71.5,
+      width: 16,
+      height: 2.4,
+      length: 13.8,
+      kind: 'quiz_plaza',
+      colorHex: 0x10b981,
+    },
+    // Final Quiz & Finish Podium after Grid 3 (z: -108.4 to -142.4)
+    {
+      id: 'tf-finish',
+      x: 0,
+      y: 0.5,
+      z: -125.4,
+      width: 17,
+      height: 2.8,
+      length: 34,
+      kind: 'finish',
+      colorHex: 0x0ea5e9,
+    },
+  ];
+
+  // 3 Floating Stumble-Style Tile Fall Grids (6 + 8 + 10 = 24 rows x 5 cols = 120 tiles)
+  const grid1 = generateTileGrid({
+    gridIndex: 0,
+    rows: 6,
+    cols: 5,
+    startZ: -10.4,
+    y: 0,
+    seed: seed ^ 0x1a2b3c,
+  });
+  const grid2 = generateTileGrid({
+    gridIndex: 1,
+    rows: 8,
+    cols: 5,
+    startZ: -42.0,
+    y: 0.2,
+    seed: seed ^ 0x4d5e6f,
+  });
+  const grid3 = generateTileGrid({
+    gridIndex: 2,
+    rows: 10,
+    cols: 5,
+    startZ: -80.0,
+    y: 0.5,
+    seed: seed ^ 0x7a8b9c,
+  });
+
+  const fallingTiles: FallingTileDef[] = [...grid1, ...grid2, ...grid3];
+
+  // Place Golden Stars above safe tiles along each grid so players get rewarded for reading the path!
+  const pickSafeStar = (grid: FallingTileDef[], row: number, id: string): StarPickupDef => {
+    const safeInRow = grid.filter((t) => t.row === row && t.isSafe);
+    const target = safeInRow[Math.floor(safeInRow.length / 2)] ?? grid[0];
+    return {
+      id,
+      x: target.x,
+      y: target.baseY + 1.15,
+      z: target.z,
+      collected: false,
+    };
+  };
+
+  const stars: StarPickupDef[] = [
+    pickSafeStar(grid1, 1, 'tf-star-1'),
+    pickSafeStar(grid1, 3, 'tf-star-2'),
+    pickSafeStar(grid1, 5, 'tf-star-3'),
+    pickSafeStar(grid2, 1, 'tf-star-4'),
+    pickSafeStar(grid2, 4, 'tf-star-5'),
+    pickSafeStar(grid2, 7, 'tf-star-6'),
+    pickSafeStar(grid3, 2, 'tf-star-7'),
+    pickSafeStar(grid3, 5, 'tf-star-8'),
+    pickSafeStar(grid3, 8, 'tf-star-9'),
+    { id: 'tf-star-10', x: 0, y: 1.75, z: -125.5, collected: false },
+  ];
+
+  const speedPads: SpeedPadDef[] = [
+    { id: 'tf-pad-1', x: 0, y: 0.5, z: -112.5, width: 4.2, length: 4.5 },
+    { id: 'tf-pad-2', x: 0, y: 0.5, z: -126.0, width: 4.8, length: 4.8 },
+  ];
+
+  const quizGates: QuizGateDef[] = [
+    { ...createQuizGate(0, -34.0, 0, questions[0]), promptStartZ: -16 },
+    { ...createQuizGate(1, -72.0, 0.2, questions[1]), promptStartZ: -52 },
+    { ...createQuizGate(2, -119.5, 0.5, questions[2]), promptStartZ: -96 },
+  ];
+
+  return {
+    mode: 'tile_fall',
+    platforms,
+    fallingTiles,
+    sweepers: [],
+    bumpers: [],
+    speedPads,
+    stars,
+    quizGates,
+    startZ: 0,
+    finishZ: -132,
+    timeLimitSeconds: 150,
   };
 }
 

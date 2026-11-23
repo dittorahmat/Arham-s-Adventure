@@ -141,5 +141,5 @@ test('AI classmates generate valid forward steering and moving platform lookup w
   assert.ok(aiInput.moveZ < 0, 'AI must steer forward along -Z');
 
   const hit = findSupportingPlatform(0, 0, 0.1, -5, course, 0);
-  assert.ok(hit !== null && hit.platform.id === 'plat-start');
+  assert.ok(hit !== null && hit.platform?.id === 'plat-start');
 });

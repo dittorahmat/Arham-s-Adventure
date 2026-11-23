@@ -4,9 +4,35 @@ export type SubjectFilter = 'semua' | 'matematika' | 'ipa' | 'ips' | 'bahasa';
 
 export type SubjectKey = Exclude<SubjectFilter, 'semua'>;
 
+export type GameMode = 'classic' | 'tile_fall';
+
 export type GameState = 'title' | 'playing' | 'paused' | 'gameover';
 
 export type AiPolicy = 'speedster' | 'cautious' | 'quizwhiz';
+
+export type TileState = 'hidden' | 'safe_revealed' | 'shaking' | 'falling' | 'gone';
+
+export interface FallingTileDef {
+  id: string;
+  gridIndex: number;
+  row: number;
+  col: number;
+  x: number;
+  baseY: number;
+  y: number;
+  z: number;
+  size: number;
+  isSafe: boolean;
+  state: TileState;
+  shakeTimer: number;
+  fallVy: number;
+  rotX: number;
+  rotZ: number;
+  spinX: number;
+  spinZ: number;
+  revealPop: number;
+  hintPhase: number;
+}
 
 export interface QuizQuestion {
   id: string;
@@ -95,7 +121,9 @@ export interface QuizGateDef {
 }
 
 export interface CourseLayout {
+  mode: GameMode;
   platforms: PlatformDef[];
+  fallingTiles: FallingTileDef[];
   sweepers: SweeperDef[];
   bumpers: BumperDef[];
   speedPads: SpeedPadDef[];
@@ -193,6 +221,7 @@ export interface AchievementBadgeView {
 }
 
 export interface HudSnapshot {
+  mode: GameMode;
   rank: number;
   totalRacers: number;
   score: number;

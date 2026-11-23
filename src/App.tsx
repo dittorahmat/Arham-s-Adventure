@@ -8,9 +8,10 @@ import { PlayingHud } from './components/PlayingHud';
 import { StatusModals } from './components/StatusModals';
 import { TitleOverlay } from './components/TitleOverlay';
 import { ArhamGameEngine } from './game/ThreeEngine';
-import { GameOverSnapshot, GameState, HudSnapshot, SubjectFilter } from './game/types';
+import { GameMode, GameOverSnapshot, GameState, HudSnapshot, SubjectFilter } from './game/types';
 
 const INITIAL_HUD: HudSnapshot = {
+  mode: 'classic',
   rank: 1,
   totalRacers: 6,
   score: 0,
@@ -32,6 +33,7 @@ export default function App() {
   const engineRef = useRef<ArhamGameEngine | null>(null);
 
   const [gameState, setGameState] = useState<GameState>('title');
+  const [selectedMode, setSelectedMode] = useState<GameMode>('classic');
   const [selectedSubject, setSelectedSubject] = useState<SubjectFilter>('semua');
   const [hud, setHud] = useState<HudSnapshot>(INITIAL_HUD);
   const [gameOver, setGameOver] = useState<GameOverSnapshot | null>(null);
@@ -58,18 +60,28 @@ export default function App() {
     });
     engineRef.current = engine;
 
-    // Support ?autostart=1 and ?preview_gameover=1 for automated testing and direct-entry links
+    // Support ?mode=tile_fall, ?autostart=1, and ?preview_gameover=1 for direct-entry & testing
     const params = new URLSearchParams(window.location.search);
+    const initialMode: GameMode = params.get('mode') === 'tile_fall' ? 'tile_fall' : 'classic';
+    if (initialMode !== 'classic') {
+      setSelectedMode(initialMode);
+      engine.setGameMode(initialMode);
+    }
     if (params.get('preview_gameover') === '1') {
       engine.previewGameOver();
     } else if (params.get('autostart') === '1') {
-      engine.startGame('semua');
+      engine.startGame('semua', initialMode);
     }
 
     return () => {
       engine.dispose();
       engineRef.current = null;
     };
+  }, []);
+
+  const handleSelectMode = useCallback((mode: GameMode) => {
+    setSelectedMode(mode);
+    engineRef.current?.setGameMode(mode);
   }, []);
 
   const handleSelectSubject = useCallback((subj: SubjectFilter) => {
@@ -79,8 +91,8 @@ export default function App() {
 
   const handleStart = useCallback(() => {
     setGameOver(null);
-    engineRef.current?.startGame(selectedSubject);
-  }, [selectedSubject]);
+    engineRef.current?.startGame(selectedSubject, selectedMode);
+  }, [selectedSubject, selectedMode]);
 
   const handlePause = useCallback(() => {
     engineRef.current?.pauseGame();
@@ -123,6 +135,8 @@ export default function App() {
 
       {gameState === 'title' && (
         <TitleOverlay
+          selectedMode={selectedMode}
+          onSelectMode={handleSelectMode}
           selectedSubject={selectedSubject}
           onSelectSubject={handleSelectSubject}
           onStart={handleStart}
