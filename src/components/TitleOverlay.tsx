@@ -1,20 +1,21 @@
 import React, { useState } from 'react';
 import { DailyChallengesState, loadDailyChallenges } from '../game/dailyChallenges';
+import { GAME_MODE_CATALOG, GAME_MODE_SELECTIONS } from '../game/gameModes';
 import {
   clearLeaderboard,
   LeaderboardEntry,
   loadLeaderboard,
 } from '../game/leaderboard';
 import { SUBJECT_LABELS } from '../game/questions';
-import { GAME_MODE_LIST, GAME_MODE_META } from '../game/tileFall';
-import { GameMode, SubjectFilter } from '../game/types';
+import { GameModeSelection, PlayableGameMode, SubjectFilter } from '../game/types';
 import { ArhamSprite } from './ArhamSprite';
 import { DailyChallengesModal } from './DailyChallengesModal';
 import { TopScoresModal } from './TopScoresModal';
 
 interface TitleOverlayProps {
-  selectedMode: GameMode;
-  onSelectMode: (mode: GameMode) => void;
+  selectedMode: GameModeSelection;
+  previewMode: PlayableGameMode;
+  onSelectMode: (mode: GameModeSelection) => void;
   selectedSubject: SubjectFilter;
   onSelectSubject: (subject: SubjectFilter) => void;
   onStart: () => void;
@@ -22,8 +23,67 @@ interface TitleOverlayProps {
 
 const SUBJECT_LIST: SubjectFilter[] = ['semua', 'matematika', 'ipa', 'ips', 'bahasa'];
 
+const ModeIcon: React.FC<{ mode: GameModeSelection }> = ({ mode }) => {
+  switch (mode) {
+    case 'random':
+      return (
+        <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" aria-hidden="true">
+          <rect x="3.5" y="3.5" width="17" height="17" rx="4" fill="#ffffff" stroke="#1e293b" strokeWidth="2.1" />
+          <circle cx="8.5" cy="8.5" r="1.6" fill="#db2777" />
+          <circle cx="15.5" cy="8.5" r="1.6" fill="#2563eb" />
+          <circle cx="12" cy="12" r="1.7" fill="#f59e0b" />
+          <circle cx="8.5" cy="15.5" r="1.6" fill="#16a34a" />
+          <circle cx="15.5" cy="15.5" r="1.6" fill="#7c3aed" />
+        </svg>
+      );
+    case 'tile_fall':
+      return (
+        <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" aria-hidden="true">
+          <rect x="3" y="4" width="8" height="6" rx="1.5" fill="#22c55e" stroke="#1e293b" strokeWidth="2" />
+          <rect x="13" y="4" width="8" height="6" rx="1.5" fill="#818cf8" stroke="#1e293b" strokeWidth="2" />
+          <rect x="3" y="12" width="8" height="6" rx="1.5" fill="#facc15" stroke="#1e293b" strokeWidth="2" />
+          <g transform="translate(17 17) rotate(18)">
+            <rect x="-4" y="-3" width="8" height="6" rx="1.5" fill="#ef4444" stroke="#1e293b" strokeWidth="2" />
+          </g>
+        </svg>
+      );
+    case 'ice_slide':
+      return (
+        <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" aria-hidden="true">
+          <path d="M12 3v18M4.2 7.5l15.6 9M19.8 7.5l-15.6 9" stroke="#0284c7" strokeWidth="2.4" strokeLinecap="round" />
+          <circle cx="12" cy="12" r="2.8" fill="#e0f2fe" stroke="#1e293b" strokeWidth="1.8" />
+        </svg>
+      );
+    case 'laser_dash':
+      return (
+        <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" aria-hidden="true">
+          <rect x="2.5" y="7" width="3.5" height="10" rx="1.2" fill="#1e293b" />
+          <rect x="18" y="7" width="3.5" height="10" rx="1.2" fill="#1e293b" />
+          <line x1="6" y1="12" x2="18" y2="12" stroke="#f43f5e" strokeWidth="3.6" strokeLinecap="round" />
+          <line x1="6" y1="12" x2="18" y2="12" stroke="#ffffff" strokeWidth="1.3" strokeLinecap="round" />
+        </svg>
+      );
+    case 'honey_drop':
+      return (
+        <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" aria-hidden="true">
+          <polygon points="12,3 19.5,7.2 19.5,16.8 12,21 4.5,16.8 4.5,7.2" fill="#f59e0b" stroke="#1e293b" strokeWidth="2.1" strokeLinejoin="round" />
+          <polygon points="12,7 16,9.2 16,14.8 12,17 8,14.8 8,9.2" fill="#fef08a" />
+        </svg>
+      );
+    case 'classic':
+    default:
+      return (
+        <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" aria-hidden="true">
+          <path d="M5 19V5h11l-2.2 3.5L16 12H5" fill="#facc15" stroke="#1e293b" strokeWidth="2.2" strokeLinejoin="round" strokeLinecap="round" />
+          <circle cx="17.5" cy="17.5" r="3" fill="#fb7185" stroke="#1e293b" strokeWidth="2" />
+        </svg>
+      );
+  }
+};
+
 export const TitleOverlay: React.FC<TitleOverlayProps> = ({
   selectedMode,
+  previewMode,
   onSelectMode,
   selectedSubject,
   onSelectSubject,
@@ -53,12 +113,15 @@ export const TitleOverlay: React.FC<TitleOverlayProps> = ({
 
   const dailyDoneCount = dailyChallenges.challenges.filter((c) => c.completed).length;
   const dailyTotalCount = dailyChallenges.challenges.length;
+  const selectedMeta = GAME_MODE_CATALOG[selectedMode];
+  const previewMeta = GAME_MODE_CATALOG[previewMode];
+
   return (
-    <div className="pointer-events-none fixed inset-0 z-20 flex flex-col justify-between p-5 sm:p-8 lg:p-12">
+    <div className="pointer-events-none fixed inset-0 z-20 flex flex-col justify-between p-4 sm:p-7 lg:p-10">
       {/* Main Left-Third Negative-Space Lockup & Controls */}
-      <div className="my-auto flex max-w-lg flex-col items-start gap-6">
+      <div className="my-auto flex max-w-xl flex-col items-start gap-4 sm:gap-5">
         {/* Bespoke Inline SVG Title Emblem Lockup */}
-        <div className="w-full max-w-[440px]">
+        <div className="w-full max-w-[380px] sm:max-w-[420px]">
           <svg
             viewBox="0 0 460 190"
             role="img"
@@ -135,30 +198,35 @@ export const TitleOverlay: React.FC<TitleOverlayProps> = ({
             </text>
           </svg>
 
-          <p className="mt-1 pl-2 font-display text-base font-semibold text-white hud-stroke-sm sm:text-lg">
+          <p className="mt-1 pl-2 font-display text-sm font-semibold text-white hud-stroke-sm sm:text-base">
             Balap Halang Rintang · Pelajaran Kelas 5 SD
           </p>
         </div>
 
         {/* Game Mode + Subject Filter Compact Toy Setup Panel */}
-        <div className="pointer-events-auto w-full max-w-xl space-y-3 rounded-2xl border-[3px] border-[#1e293b] bg-[#fffdf5]/95 p-3 toy-panel">
-          {/* Mode Selector: Balap Klasik vs Lantai Jebakan (Tile Fall) */}
+        <div className="pointer-events-auto w-full max-w-xl space-y-2.5 rounded-2xl border-[3px] border-[#1e293b] bg-[#fffdf5]/95 p-3 toy-panel">
+          {/* 6-Mode Selector: Mode Acak (Default) + 5 Playable Arenas */}
           <div>
-            <div className="mb-1.5 flex items-center justify-between text-xs font-bold text-[#334155]">
+            <div className="mb-1.5 flex flex-wrap items-center justify-between gap-x-2 gap-y-0.5 text-xs font-bold text-[#334155]">
               <span>Pilih Mode Balapan</span>
-              <span className="text-[#2563eb]">
-                {selectedMode === 'tile_fall' ? 'Tile Fall · Stumble!' : 'Lintasan Rintangan'}
+              <span
+                className="font-extrabold"
+                style={{ color: selectedMeta.accentHex }}
+                data-testid="mode-preview-summary"
+              >
+                {selectedMode === 'random'
+                  ? `Pratinjau: ${previewMeta.label}`
+                  : selectedMeta.subtitle}
               </span>
             </div>
             <div
-              className="grid grid-cols-1 gap-2 sm:grid-cols-2"
+              className="grid grid-cols-2 gap-1.5 sm:grid-cols-3"
               role="radiogroup"
               aria-label="Pilih Mode Balapan"
             >
-              {GAME_MODE_LIST.map((modeId) => {
-                const meta = GAME_MODE_META[modeId];
+              {GAME_MODE_SELECTIONS.map((modeId) => {
+                const meta = GAME_MODE_CATALOG[modeId];
                 const active = selectedMode === modeId;
-                const isTileFall = modeId === 'tile_fall';
                 return (
                   <button
                     key={modeId}
@@ -170,46 +238,21 @@ export const TitleOverlay: React.FC<TitleOverlayProps> = ({
                       onSelectMode(modeId);
                       e.currentTarget.blur();
                     }}
-                    className={`flex cursor-pointer items-center gap-2.5 rounded-xl border-2 px-3 py-2 text-left transition-transform ${
+                    style={active ? { backgroundColor: meta.accentHex } : undefined}
+                    className={`flex cursor-pointer items-center gap-2 rounded-xl border-2 px-2.5 py-2 text-left transition-transform ${
                       active
-                        ? isTileFall
-                          ? 'border-[#1e293b] bg-[#7c3aed] text-white shadow-[0_3px_0_#1e293b]'
-                          : 'border-[#1e293b] bg-[#2563eb] text-white shadow-[0_3px_0_#1e293b]'
+                        ? 'border-[#1e293b] text-white shadow-[0_3px_0_#1e293b]'
                         : 'border-[#cbd5e1] bg-white text-[#1e293b] hover:border-[#64748b] hover:bg-[#f1f5f9]'
                     }`}
                   >
                     <span
-                      className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border-2 border-[#1e293b] ${
-                        isTileFall ? 'bg-[#fde047]' : 'bg-[#bae6fd]'
-                      }`}
+                      className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border-2 border-[#1e293b]"
+                      style={{ backgroundColor: meta.iconBgHex }}
                     >
-                      {isTileFall ? (
-                        <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" aria-hidden="true">
-                          <rect x="3" y="4" width="8" height="6" rx="1.5" fill="#22c55e" stroke="#1e293b" strokeWidth="2" />
-                          <rect x="13" y="4" width="8" height="6" rx="1.5" fill="#818cf8" stroke="#1e293b" strokeWidth="2" />
-                          <rect x="3" y="12" width="8" height="6" rx="1.5" fill="#facc15" stroke="#1e293b" strokeWidth="2" />
-                          <g transform="translate(17 17) rotate(18)">
-                            <rect x="-4" y="-3" width="8" height="6" rx="1.5" fill="#ef4444" stroke="#1e293b" strokeWidth="2" />
-                          </g>
-                        </svg>
-                      ) : (
-                        <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" aria-hidden="true">
-                          <path d="M5 19V5h11l-2.2 3.5L16 12H5" fill="#facc15" stroke="#1e293b" strokeWidth="2.2" strokeLinejoin="round" strokeLinecap="round" />
-                          <circle cx="17.5" cy="17.5" r="3" fill="#fb7185" stroke="#1e293b" strokeWidth="2" />
-                        </svg>
-                      )}
+                      <ModeIcon mode={modeId} />
                     </span>
-                    <span className="min-w-0">
-                      <span className="block truncate font-display text-sm font-bold leading-tight">
-                        {meta.label}
-                      </span>
-                      <span
-                        className={`block truncate text-[11px] font-semibold ${
-                          active ? 'text-white/90' : 'text-[#64748b]'
-                        }`}
-                      >
-                        {meta.subtitle}
-                      </span>
+                    <span className="whitespace-nowrap font-display text-xs font-bold leading-tight sm:text-[13px]">
+                      {meta.label}
                     </span>
                   </button>
                 );
@@ -218,10 +261,10 @@ export const TitleOverlay: React.FC<TitleOverlayProps> = ({
           </div>
 
           {/* Subject Filter */}
-          <div className="border-t-2 border-dashed border-[#e2e8f0] pt-2.5">
+          <div className="border-t-2 border-dashed border-[#e2e8f0] pt-2">
             <div className="mb-1.5 flex flex-wrap items-center justify-between gap-x-2 gap-y-0.5 text-xs font-bold text-[#334155]">
               <span>Pilih Mata Pelajaran Kelas 5 SD</span>
-              <span>{selectedMode === 'tile_fall' ? '3 Cekpoin Kuis · 120 Ubin' : '5 Gerbang Kuis'}</span>
+              <span>{selectedMeta.gateSummary}</span>
             </div>
             <div className="flex flex-wrap gap-1.5 sm:flex-nowrap" role="radiogroup" aria-label="Pilih Mata Pelajaran">
               {SUBJECT_LIST.map((subj) => {
@@ -236,7 +279,7 @@ export const TitleOverlay: React.FC<TitleOverlayProps> = ({
                       onSelectSubject(subj);
                       e.currentTarget.blur();
                     }}
-                    className={`cursor-pointer whitespace-nowrap rounded-xl border-2 px-2.5 py-2 text-xs font-bold transition-transform ${
+                    className={`cursor-pointer whitespace-nowrap rounded-xl border-2 px-2.5 py-1.5 text-xs font-bold transition-transform sm:py-2 ${
                       active
                         ? 'border-[#1e293b] bg-[#2563eb] text-white shadow-[0_3px_0_#1e293b]'
                         : 'border-[#cbd5e1] bg-white text-[#1e293b] hover:border-[#64748b] hover:bg-[#f1f5f9]'

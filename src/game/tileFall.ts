@@ -1,28 +1,4 @@
-import { FallingTileDef, GameMode, RacerState } from './types';
-
-export interface GameModeMeta {
-  id: GameMode;
-  label: string;
-  shortTag: string;
-  subtitle: string;
-}
-
-export const GAME_MODE_LIST: readonly GameMode[] = ['classic', 'tile_fall'];
-
-export const GAME_MODE_META: Record<GameMode, GameModeMeta> = {
-  classic: {
-    id: 'classic',
-    label: 'Balap Klasik',
-    shortTag: 'Klasik',
-    subtitle: 'Bumper, Pensil Putar & 5 Kuis',
-  },
-  tile_fall: {
-    id: 'tile_fall',
-    label: 'Lantai Jebakan',
-    shortTag: 'Tile Fall',
-    subtitle: 'Ubin Palsu Jatuh ala Stumble!',
-  },
-};
+import { FallingTileDef, RacerState } from './types';
 
 export const TILE_FALL_CONSTANTS = {
   tileSize: 2.72,
@@ -241,7 +217,7 @@ export function triggerTileStep(tile: FallingTileDef): TileStepOutcome {
     return 'safe_revealed';
   }
   tile.state = 'shaking';
-  tile.shakeTimer = TILE_FALL_CONSTANTS.shakeDuration;
+  tile.shakeTimer = tile.crumbleDuration ?? TILE_FALL_CONSTANTS.shakeDuration;
   return 'fake_triggered';
 }
 
@@ -280,15 +256,17 @@ export function stepFallingTiles(tiles: FallingTileDef[], dt: number): TileFallS
 }
 
 /**
- * Computes steering target X and speed factor for AI classmates crossing a Tile Fall grid.
- * - Speedsters boldly scout unrevealed tiles (sometimes triggering fake tiles for comedy!).
- * - Cautious & QuizWhiz racers prioritize revealed emerald safe tiles and dodge fallen gaps.
+ * Computes steering target X and speed factor for AI classmates crossing a Tile Fall or Honey Drop grid.
+ * - In Tile Fall: Speedsters boldly scout unrevealed tiles; Cautious & QuizWhiz prioritize revealed green safe tiles.
+ * - In Honey Drop (hex crumble tiles): All bots sprint across fresh untouched hexes and leap over gaps.
  */
 export function computeTileFallAiGuidance(
   racer: RacerState,
   tiles: readonly FallingTileDef[],
 ): { targetX: number; speedFactor: number; wantJump: boolean } | null {
   if (tiles.length === 0) return null;
+
+  const isHoneyMode = tiles[0].shape === 'hex';
 
   // Find tiles slightly ahead of racer (within 4.8m in -Z)
   let closestRowZ = -Infinity;
@@ -307,27 +285,29 @@ export function computeTileFallAiGuidance(
   if (aheadTiles.length === 0) return null;
 
   // Filter to the immediate next row ahead
-  const nextRowTiles = aheadTiles.filter((t) => Math.abs(t.z - closestRowZ) <= 1.2);
+  const nextRowTiles = aheadTiles.filter((t) => Math.abs(t.z - closestRowZ) <= 1.25);
   const intact = nextRowTiles.filter((t) => t.state === 'hidden' || t.state === 'safe_revealed');
   if (intact.length === 0) {
-    // Entire row ahead is gone — jump over the gap!
-    return { targetX: racer.x, speedFactor: 0.9, wantJump: true };
+    // Entire row ahead is shaking/gone — jump over the gap!
+    return { targetX: racer.x, speedFactor: 0.94, wantJump: true };
   }
 
   const revealed = intact.filter((t) => t.state === 'safe_revealed');
   const pool =
-    revealed.length > 0 && (racer.policy !== 'speedster' || Math.abs(revealed[0].x - racer.x) < 4.5)
+    !isHoneyMode &&
+    revealed.length > 0 &&
+    (racer.policy !== 'speedster' || Math.abs(revealed[0].x - racer.x) < 4.5)
       ? revealed
       : intact;
 
   // Pick tile closest to current X (with deterministic personality offset so bots fan out)
-  const nameBias = ((racer.name.charCodeAt(0) % 3) - 1) * 0.9;
+  const nameBias = ((racer.name.charCodeAt(0) % 3) - 1) * (isHoneyMode ? 1.35 : 0.9);
   let best = pool[0];
   let bestScore = Infinity;
   for (const candidate of pool) {
     let score = Math.abs(candidate.x - (racer.x + nameBias));
-    // QuizWhiz reads subtle tells slightly better (slight preference for truly safe tiles)
-    if (racer.policy === 'quizwhiz' && candidate.isSafe) {
+    // QuizWhiz reads subtle tells slightly better in Tile Fall
+    if (!isHoneyMode && racer.policy === 'quizwhiz' && candidate.isSafe) {
       score -= 1.6;
     }
     if (score < bestScore) {
@@ -336,10 +316,17 @@ export function computeTileFallAiGuidance(
     }
   }
 
-  const baseSpeed =
-    racer.policy === 'speedster' ? 0.86 : racer.policy === 'quizwhiz' ? 0.78 : 0.72;
-  // Slow slightly when stepping onto an unrevealed tile like cautious Tip Toe players
-  const speedFactor = best.state === 'safe_revealed' ? baseSpeed : baseSpeed * 0.86;
+  const baseSpeed = isHoneyMode
+    ? racer.policy === 'speedster'
+      ? 0.94
+      : 0.86
+    : racer.policy === 'speedster'
+      ? 0.86
+      : racer.policy === 'quizwhiz'
+        ? 0.78
+        : 0.72;
+  const speedFactor =
+    isHoneyMode || best.state === 'safe_revealed' ? baseSpeed : baseSpeed * 0.86;
   const needLateralLeap = Math.abs(best.x - racer.x) > 2.4;
 
   return {

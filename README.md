@@ -6,12 +6,13 @@
 
 ## Fitur Utama
 
-### 1. Dua Mode Balapan
+### 1. Enam Pilihan Mode Balapan (Default: Mode Acak!)
+- **Mode Acak (`random` — Default)**: Memilih salah satu dari 5 arena secara otomatis setiap kali mulai/mengulang lomba (dan menghindari pengulangan langsung) sehingga setiap ronde selalu terasa segar dan penuh kejutan.
 - **Balap Klasik (`classic`)**: Lintasan halang rintang lengkap dengan *Eraser Bumper* memantul, *Pencil Sweeper* berputar, jembatan penggaris kayu bergerak, *speed pad*, bintang emas, dan **5 Gerbang Kuis**.
-- **Lantai Jebakan / Tile Fall (`tile_fall`)**: Mode ala *Stumble Guys Tile Fall / Tip Toe* dengan **120 ubin melayang** (3 arena grid: 6×5, 8×5, dan 10×5) yang dipisahkan oleh **3 Gerbang Cekpoin Kuis**.
-  - Setiap arena memiliki jalur aman 4-arah yang dijamin selalu dapat dilewati.
-  - **Ubin Aman** menyala **hijau** dengan animasi memantul dan memberi bonus poin.
-  - **Ubin Palsu** menyala **merah**, bergetar singkat, lalu pecah bersama partikel dan jatuh ke langit.
+- **Lantai Jebakan / Tile Fall (`tile_fall`)**: Mode ala *Stumble Guys Tile Fall / Tip Toe* dengan **120 ubin melayang** (3 arena grid: 6×5, 8×5, dan 10×5) yang dipisahkan oleh **3 Gerbang Cekpoin Kuis**. Ubin aman menyala **hijau**, ubin palsu bergetar merah lalu jatuh.
+- **Seluncur Es (`ice_slide`)**: Terinspirasi *Icy Heights / Super Slide* — trek es kristal berfriksi super rendah sehingga Arham meluncur dan *drift* licin melewati bumper es, jembatan gletser bergerak, *speed pad*, dan **4 Gerbang Kuis**.
+- **Lari Laser (`laser_dash`)**: Terinspirasi *Laser Dash / Block Dash* — arena neon gelap dengan **9 sinar laser menyapu** yang harus dilompati tepat waktu (disertai AI yang melompati laser, efek percikan listrik, dan **4 Gerbang Kuis**).
+- **Jatuh Madu (`honey_drop`)**: Terinspirasi *Honey Drop / Hex-A-Gone* — **3 arena heksagon sarang madu emas** yang setiap ubinnya mulai bergetar oranye → merah dan **runtuh 0,48 detik setelah diinjak** oleh pemain maupun bot, dipisahkan oleh **3 Gerbang Cekpoin Kuis**.
 
 ### 2. Edukasi Kelas 5 SD & Review Materi
 - Filter mata pelajaran di layar awal: **Semua Mapel**, **Matematika**, **IPA**, **IPS & PPKn**, atau **Bahasa Indonesia**.
@@ -57,9 +58,12 @@ npm run dev
 Aplikasi berjalan di `http://localhost:3000`.
 
 ### Parameter URL Berguna
-- `http://localhost:3000/?autostart=1` — Langsung masuk ke mode Balap Klasik.
-- `http://localhost:3000/?mode=tile_fall` — Membuka layar awal dengan mode Lantai Jebakan aktif.
-- `http://localhost:3000/?mode=tile_fall&autostart=1` — Langsung bermain di mode Lantai Jebakan.
+- `http://localhost:3000/?autostart=1` — Langsung bermain di mode default (**Mode Acak**).
+- `http://localhost:3000/?mode=classic&autostart=1` — Langsung bermain di mode **Balap Klasik**.
+- `http://localhost:3000/?mode=tile_fall&autostart=1` — Langsung bermain di mode **Lantai Jebakan (Tile Fall)**.
+- `http://localhost:3000/?mode=ice_slide&autostart=1` — Langsung bermain di mode **Seluncur Es**.
+- `http://localhost:3000/?mode=laser_dash&autostart=1` — Langsung bermain di mode **Lari Laser**.
+- `http://localhost:3000/?mode=honey_drop&autostart=1` — Langsung bermain di mode **Jatuh Madu**.
 - `http://localhost:3000/?preview_gameover=1` — Pratinjau modal hasil akhir & lencana pencapaian.
 
 ### Build, Type-Check & Unit Test
@@ -70,7 +74,7 @@ npm run lint
 # Build produksi
 npm run build
 
-# Jalankan seluruh unit test (40 test / 10 suite)
+# Jalankan seluruh unit test
 npx --yes tsx --test src/game/*.test.ts
 ```
 
@@ -98,7 +102,8 @@ src/
     ├── textures.ts               # Generator tekstur CanvasTexture prosedural
     ├── particles.ts              # Renderer partikel & shockwave InstancedMesh
     ├── particlePresets.ts        # Resep & kinematika partikel murni (+ .test.ts)
-    ├── courseData.ts             # Layout lintasan Balap Klasik & Lantai Jebakan
+    ├── courseData.ts             # Layout lintasan 5 mode (Klasik, Tile Fall, Es, Laser, Madu)
+    ├── gameModes.ts              # Katalog mode, resolver Mode Acak, laser & hex grid (+ .test.ts)
     ├── tileFall.ts               # Generator grid Tile Fall, state ubin & AI (+ .test.ts)
     ├── physics.ts                # Fisika pembalap, kolisi & AI (+ .test.ts)
     ├── questions.ts              # Bank soal Kelas 5 SD (+ .test.ts)

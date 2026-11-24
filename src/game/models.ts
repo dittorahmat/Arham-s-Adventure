@@ -295,6 +295,70 @@ export function createEraserBumper(radius: number, colorHex: number): THREE.Grou
 }
 
 /**
+ * Composite Cyber Laser Barrier (twin trackside emitter pylons + glowing core beam + energy aura).
+ */
+export function createLaserBarrierVisual(width: number, barHeight: number, colorHex: number): THREE.Group {
+  const group = new THREE.Group();
+
+  const housingMat = new THREE.MeshStandardMaterial({
+    color: 0x1e293b,
+    roughness: 0.36,
+    metalness: 0.55,
+  });
+  const collarMat = new THREE.MeshStandardMaterial({
+    color: colorHex,
+    emissive: colorHex,
+    emissiveIntensity: 0.45,
+    roughness: 0.25,
+    metalness: 0.2,
+  });
+
+  const halfW = width * 0.5;
+  [-halfW, halfW].forEach((px) => {
+    const base = new THREE.Mesh(new THREE.BoxGeometry(0.95, 0.28, 0.95), housingMat);
+    base.position.set(px, 0.14, 0);
+    group.add(base);
+
+    const pylon = new THREE.Mesh(new THREE.CylinderGeometry(0.28, 0.36, barHeight + 0.45, 12), housingMat);
+    pylon.position.set(px, (barHeight + 0.45) * 0.5, 0);
+    pylon.castShadow = true;
+    group.add(pylon);
+
+    const emitterRing = new THREE.Mesh(new THREE.CylinderGeometry(0.35, 0.35, 0.24, 12), collarMat);
+    emitterRing.position.set(px, barHeight, 0);
+    group.add(emitterRing);
+
+    const cap = new THREE.Mesh(new THREE.SphereGeometry(0.24, 10, 8), collarMat);
+    cap.position.set(px, barHeight + 0.48, 0);
+    group.add(cap);
+  });
+
+  // High-contrast bright inner laser core
+  const coreBeam = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.09, 0.09, width, 10),
+    new THREE.MeshBasicMaterial({ color: 0xffffff }),
+  );
+  coreBeam.rotation.z = Math.PI / 2;
+  coreBeam.position.y = barHeight;
+  group.add(coreBeam);
+
+  // Colored glowing outer energy sheath
+  const outerBeam = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.21, 0.21, width, 12),
+    new THREE.MeshBasicMaterial({
+      color: colorHex,
+      transparent: true,
+      opacity: 0.78,
+    }),
+  );
+  outerBeam.rotation.z = Math.PI / 2;
+  outerBeam.position.y = barHeight;
+  group.add(outerBeam);
+
+  return group;
+}
+
+/**
  * Beveled Golden 5-Pointed Star Collectible (ExtrudeGeometry + inner core).
  */
 export function createStarPickup(): THREE.Group {

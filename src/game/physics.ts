@@ -1,3 +1,4 @@
+import { getLaserBarrierZ, isRacerHitByLaser } from './gameModes';
 import {
   computeTileFallAiGuidance,
   findSupportingTile,
@@ -39,6 +40,7 @@ export type PhysicsEvent =
   | { type: 'dive'; isPlayer: boolean; x: number; y: number; z: number }
   | { type: 'bumper'; isPlayer: boolean; x: number; y: number; z: number; bumperId: string }
   | { type: 'sweeper'; isPlayer: boolean; x: number; y: number; z: number }
+  | { type: 'laser_hit'; isPlayer: boolean; x: number; y: number; z: number; laserId: string }
   | { type: 'speedpad'; isPlayer: boolean; x: number; y: number; z: number }
   | { type: 'star'; isPlayer: boolean; starId: string; x: number; y: number; z: number }
   | {
@@ -209,12 +211,23 @@ export function stepRacerPhysics(
     iz /= inputLen;
   }
 
-  const maxSpeed =
-    racer.boostTimer > 0 ? PHYSICS_CONSTANTS.boostRunSpeed : PHYSICS_CONSTANTS.maxRunSpeed;
+  // Detect slippery ice surface under feet when grounded
+  const groundedSupport = racer.grounded
+    ? findSupportingPlatform(racer.x, racer.y, racer.y + 0.2, racer.z, course, elapsedTime)
+    : null;
+  const onIce = groundedSupport?.platform?.surface === 'ice';
 
-  // Horizontal steering (reduced control while diving or briefly stunned)
+  const baseMaxSpeed =
+    racer.boostTimer > 0 ? PHYSICS_CONSTANTS.boostRunSpeed : PHYSICS_CONSTANTS.maxRunSpeed;
+  const maxSpeed = onIce ? baseMaxSpeed * 1.16 : baseMaxSpeed;
+
+  // Horizontal steering (slippery icy carving on ice decks; reduced control while diving or stunned)
   if (racer.stunTimer <= 0 && racer.diveTimer <= 0) {
-    const accel = racer.grounded ? PHYSICS_CONSTANTS.groundAccel : PHYSICS_CONSTANTS.airAccel;
+    const accel = racer.grounded
+      ? onIce
+        ? PHYSICS_CONSTANTS.groundAccel * 0.3
+        : PHYSICS_CONSTANTS.groundAccel
+      : PHYSICS_CONSTANTS.airAccel;
     if (inputLen > 0.05) {
       const targetVx = ix * maxSpeed;
       const targetVz = iz * maxSpeed;
@@ -223,12 +236,15 @@ export function stepRacerPhysics(
       racer.vz += (targetVz - racer.vz) * step;
       racer.facingYaw = Math.atan2(ix, iz);
     } else if (racer.grounded) {
-      const damp = Math.exp(-PHYSICS_CONSTANTS.groundFriction * clampedDt);
+      const friction = onIce
+        ? PHYSICS_CONSTANTS.groundFriction * 0.14
+        : PHYSICS_CONSTANTS.groundFriction;
+      const damp = Math.exp(-friction * clampedDt);
       racer.vx *= damp;
       racer.vz *= damp;
     }
   } else {
-    const drag = Math.exp(-3.2 * clampedDt);
+    const drag = Math.exp(-(onIce ? 1.4 : 3.2) * clampedDt);
     racer.vx *= drag;
     racer.vz *= drag;
   }
@@ -411,6 +427,30 @@ export function stepRacerPhysics(
     }
   }
 
+  // Sweeping Neon Laser Barriers (Laser Dash mode)
+  for (const laser of course.lasers) {
+    if (racer.stunTimer <= 0.05 && isRacerHitByLaser(racer.x, racer.y, racer.z, laser, elapsedTime)) {
+      const laserZ = getLaserBarrierZ(laser, elapsedTime);
+      const pushDir = racer.z >= laserZ ? 1 : -1;
+      racer.vz = pushDir * 11.5;
+      racer.vx *= 0.4;
+      racer.vy = 6.2;
+      racer.grounded = false;
+      racer.stunTimer = 0.36;
+      racer.hitFlashTimer = 0.18;
+      racer.squashX = 1.28;
+      racer.squashY = 0.74;
+      events.push({
+        type: 'laser_hit',
+        isPlayer: racer.isPlayer,
+        x: racer.x,
+        y: racer.y + 0.75,
+        z: laserZ,
+        laserId: laser.id,
+      });
+    }
+  }
+
   // Quiz Gate Door Collisions (3 physical doors A, B, C across track)
   for (const gate of course.quizGates) {
     const crossingPlane =
@@ -586,8 +626,8 @@ export function computeAiInput(
   let wantJump = false;
   let wantDive = false;
 
-  // 1. Check upcoming Quiz Gate within 15m (or 24m in classic mode)
-  const gateLookahead = course.mode === 'tile_fall' ? 11.5 : 24;
+  // 1. Check upcoming Quiz Gate within 11.5m (tile/honey modes) or 24m (track modes)
+  const gateLookahead = course.fallingTiles.length > 0 ? 11.5 : 24;
   const nextGate = course.quizGates.find((g) => g.z < racer.z + 1.0 && racer.z - g.z < gateLookahead);
   if (nextGate) {
     if (racer.aiDecisionGate !== nextGate.gateIndex) {
@@ -660,10 +700,18 @@ export function computeAiInput(
     }
   }
 
-  // 4. Jump over approaching Pencil Sweepers
+  // 4. Jump over approaching Pencil Sweepers & Sweeping Laser Beams
   for (const s of course.sweepers) {
     const distZ = Math.abs(racer.z - s.z);
     if (distZ < 2.2 && racer.grounded) {
+      wantJump = true;
+    }
+  }
+
+  for (const laser of course.lasers) {
+    const laserZ = getLaserBarrierZ(laser, elapsedTime);
+    const dz = racer.z - laserZ;
+    if (dz > -0.6 && dz < 2.8 && racer.grounded) {
       wantJump = true;
     }
   }

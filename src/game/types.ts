@@ -4,13 +4,21 @@ export type SubjectFilter = 'semua' | 'matematika' | 'ipa' | 'ips' | 'bahasa';
 
 export type SubjectKey = Exclude<SubjectFilter, 'semua'>;
 
-export type GameMode = 'classic' | 'tile_fall';
+export type PlayableGameMode = 'classic' | 'tile_fall' | 'ice_slide' | 'laser_dash' | 'honey_drop';
+
+export type GameMode = PlayableGameMode;
+
+export type GameModeSelection = 'random' | PlayableGameMode;
 
 export type GameState = 'title' | 'playing' | 'paused' | 'gameover';
 
 export type AiPolicy = 'speedster' | 'cautious' | 'quizwhiz';
 
 export type TileState = 'hidden' | 'safe_revealed' | 'shaking' | 'falling' | 'gone';
+
+export type TileShape = 'square' | 'hex';
+
+export type PlatformSurface = 'normal' | 'ice' | 'neon';
 
 export interface FallingTileDef {
   id: string;
@@ -22,6 +30,8 @@ export interface FallingTileDef {
   y: number;
   z: number;
   size: number;
+  shape?: TileShape;
+  crumbleDuration?: number;
   isSafe: boolean;
   state: TileState;
   shakeTimer: number;
@@ -53,6 +63,7 @@ export interface PlatformDef {
   height: number;
   length: number;
   kind: 'start' | 'track' | 'ruler_bridge' | 'quiz_plaza' | 'finish';
+  surface?: PlatformSurface;
   colorHex: number;
   moveAxis?: 'x';
   moveAmp?: number;
@@ -69,6 +80,18 @@ export interface SweeperDef {
   barHeight: number;
   speed: number;
   phase: number;
+}
+
+export interface LaserBarrierDef {
+  id: string;
+  zMin: number;
+  zMax: number;
+  y: number;
+  barHeight: number;
+  width: number;
+  speed: number;
+  phase: number;
+  colorHex: number;
 }
 
 export interface BumperDef {
@@ -121,10 +144,11 @@ export interface QuizGateDef {
 }
 
 export interface CourseLayout {
-  mode: GameMode;
+  mode: PlayableGameMode;
   platforms: PlatformDef[];
   fallingTiles: FallingTileDef[];
   sweepers: SweeperDef[];
+  lasers: LaserBarrierDef[];
   bumpers: BumperDef[];
   speedPads: SpeedPadDef[];
   stars: StarPickupDef[];
@@ -221,7 +245,8 @@ export interface AchievementBadgeView {
 }
 
 export interface HudSnapshot {
-  mode: GameMode;
+  mode: PlayableGameMode;
+  selectedMode: GameModeSelection;
   rank: number;
   totalRacers: number;
   score: number;

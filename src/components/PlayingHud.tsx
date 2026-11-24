@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { GAME_MODE_CATALOG } from '../game/gameModes';
 import { SUBJECT_COLORS } from '../game/questions';
 import { resolveHudSpriteMood } from '../game/spriteMood';
 import {
@@ -180,16 +181,23 @@ export const PlayingHud: React.FC<PlayingHudProps> = ({
               Terjang {hud.diveReadyPct === 100 ? 'Siap [Shift]' : `${hud.diveReadyPct}%`}
             </span>
 
-            {hud.mode === 'tile_fall' && (
-              <>
-                <span aria-hidden="true" className="text-[#94a3b8]">
-                  ·
-                </span>
-                <span className="font-extrabold text-[#7c3aed]" data-testid="hud-mode">
-                  Tile Fall
-                </span>
-              </>
-            )}
+            <span aria-hidden="true" className="text-[#94a3b8]">
+              ·
+            </span>
+            <span
+              className="whitespace-nowrap font-extrabold"
+              style={{ color: GAME_MODE_CATALOG[hud.mode].accentHex }}
+              data-testid="hud-mode"
+            >
+              {hud.selectedMode === 'random' ? (
+                <>
+                  <span className="hidden sm:inline">Acak: </span>
+                  {GAME_MODE_CATALOG[hud.mode].shortTag}
+                </>
+              ) : (
+                GAME_MODE_CATALOG[hud.mode].shortTag
+              )}
+            </span>
 
             {hud.streak > 0 && (
               <>

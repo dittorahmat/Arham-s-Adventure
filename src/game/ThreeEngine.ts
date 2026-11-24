@@ -15,12 +15,19 @@ import {
   loadDailyChallenges,
   saveDailyChallenges,
 } from './dailyChallenges';
+import {
+  GAME_MODE_CATALOG,
+  getLaserBarrierZ,
+  HONEY_DROP_CONSTANTS,
+  resolveGameMode,
+} from './gameModes';
 import { loadLeaderboard, recordFastestLap, saveLeaderboard } from './leaderboard';
 import {
   CharacterVisualRig,
   createCharacterRig,
   createEraserBumper,
   createFinishArch,
+  createLaserBarrierVisual,
   createPencilSweeper,
   createQuizGateVisual,
   createSkyWorldDecor,
@@ -43,6 +50,8 @@ import {
 import { selectRaceQuestions } from './questions';
 import {
   createContactShadowTexture,
+  createIceTrackTexture,
+  createNeonTrackTexture,
   createRulerTexture,
   createSpeedPadTexture,
   createSurfaceBumpTexture,
@@ -54,11 +63,12 @@ import {
   AchievementProfile,
   AnsweredReviewItem,
   CourseLayout,
-  GameMode,
+  GameModeSelection,
   GameOverSnapshot,
   GameState,
   HudSnapshot,
   InputState,
+  PlayableGameMode,
   QuizFeedback,
   RacerState,
   SubjectFilter,
@@ -69,6 +79,7 @@ export interface EngineCallbacks {
   onHudUpdate: (hud: HudSnapshot) => void;
   onGameOver: (snapshot: GameOverSnapshot) => void;
   onMuteChange: (muted: boolean) => void;
+  onActiveModeChange?: (mode: PlayableGameMode) => void;
 }
 
 const BEST_SCORE_STORAGE_KEY = 'arham_adventure_best_score_v1';
@@ -108,6 +119,7 @@ export class ArhamGameEngine {
 
   private platformMeshes = new Map<string, THREE.Object3D>();
   private sweeperRotors = new Map<string, THREE.Group>();
+  private laserMeshes = new Map<string, THREE.Group>();
   private bumperMeshes = new Map<string, { group: THREE.Group; bounceAnim: number }>();
   private starMeshes = new Map<string, THREE.Group>();
   private gateVisuals: QuizGateVisual[] = [];
@@ -126,7 +138,8 @@ export class ArhamGameEngine {
 
   // Game state & loop
   private gameState: GameState = 'title';
-  private gameMode: GameMode = 'classic';
+  private selectedMode: GameModeSelection = 'random';
+  private activeMode: PlayableGameMode = resolveGameMode('random');
   private subjectFilter: SubjectFilter = 'semua';
   private elapsedTime = 0;
   private worldTime = 0;
@@ -253,8 +266,9 @@ export class ArhamGameEngine {
     // 8. Pooled Multi-Layer Particle & Shockwave VFX System
     this.particleVfx = new ParticleVfxSystem(this.scene);
 
-    // 9. Build Initial Course & Racers
-    this.rebuildRace('semua');
+    // 9. Build Initial Course & Racers (defaults to Random mode preview)
+    this.rebuildRace('semua', this.activeMode);
+    this.callbacks.onActiveModeChange?.(this.activeMode);
 
     if (!this.isSoftwareGl) {
       this.renderer.compile(this.scene, this.camera);
@@ -275,34 +289,65 @@ export class ArhamGameEngine {
     this.scheduleNextFrame();
   }
 
+  public getActiveMode(): PlayableGameMode {
+    return this.activeMode;
+  }
+
   public setSubjectFilter(subject: SubjectFilter): void {
     this.subjectFilter = subject;
     if (this.gameState === 'title') {
-      this.rebuildRace(subject, this.gameMode);
+      this.rebuildRace(subject, this.activeMode);
     }
   }
 
-  public setGameMode(mode: GameMode): void {
-    this.gameMode = mode;
+  public setGameMode(selection: GameModeSelection): void {
+    this.selectedMode = selection;
+    this.activeMode = resolveGameMode(
+      selection,
+      selection === 'random' ? this.activeMode : null,
+    );
+    this.callbacks.onActiveModeChange?.(this.activeMode);
     if (this.gameState === 'title') {
-      this.rebuildRace(this.subjectFilter, mode);
+      this.rebuildRace(this.subjectFilter, this.activeMode);
     }
   }
 
-  public startGame(subject?: SubjectFilter, mode?: GameMode): void {
+  public startGame(
+    subject?: SubjectFilter,
+    modeSelection?: GameModeSelection,
+    rerollIfRandom = false,
+  ): void {
     this.sound.unlock();
     if (subject) this.subjectFilter = subject;
-    if (mode) this.gameMode = mode;
+    if (modeSelection) {
+      const selectionChanged = modeSelection !== this.selectedMode;
+      this.selectedMode = modeSelection;
+      if (modeSelection !== 'random') {
+        this.activeMode = modeSelection;
+      } else if (selectionChanged || rerollIfRandom) {
+        this.activeMode = resolveGameMode('random', this.activeMode);
+      }
+    } else if (rerollIfRandom && this.selectedMode === 'random') {
+      this.activeMode = resolveGameMode('random', this.activeMode);
+    }
+
+    this.callbacks.onActiveModeChange?.(this.activeMode);
     this.clearInputs();
-    this.rebuildRace(this.subjectFilter, this.gameMode);
-    if (this.gameMode === 'tile_fall') {
+    this.rebuildRace(this.subjectFilter, this.activeMode);
+
+    const modeMeta = GAME_MODE_CATALOG[this.activeMode];
+    if (this.selectedMode === 'random' || this.activeMode !== 'classic') {
       this.feedback = {
         kind: 'correct',
-        headline: 'Mode Lantai Jebakan (Tile Fall)!',
-        detail: 'Cari ubin hijau yang aman — hati-hati ubin palsu jatuh!',
-        timer: 3.2,
+        headline:
+          this.selectedMode === 'random'
+            ? `Mode Acak → ${modeMeta.label}!`
+            : modeMeta.introHeadline,
+        detail: modeMeta.introDetail,
+        timer: 3.4,
       };
     }
+
     this.setGameState('playing');
     this.sound.startMusic(this.course.timeLimitSeconds, this.course.timeLimitSeconds);
     // Immediately align camera behind Arham so there's no jarring jump
@@ -329,13 +374,18 @@ export class ArhamGameEngine {
   }
 
   public restartGame(): void {
-    this.startGame(this.subjectFilter, this.gameMode);
+    // In Random mode, restarting rolls a fresh playable mode for continuous surprise!
+    this.startGame(this.subjectFilter, this.selectedMode, this.selectedMode === 'random');
   }
 
   public returnToTitle(): void {
     this.clearInputs();
     this.sound.stopMusic();
-    this.rebuildRace(this.subjectFilter, this.gameMode);
+    if (this.selectedMode === 'random') {
+      this.activeMode = resolveGameMode('random', this.activeMode);
+      this.callbacks.onActiveModeChange?.(this.activeMode);
+    }
+    this.rebuildRace(this.subjectFilter, this.activeMode);
     this.setGameState('title');
   }
 
@@ -382,11 +432,12 @@ export class ArhamGameEngine {
     this.virtualJumpHeld = false;
   }
 
-  private rebuildRace(subject: SubjectFilter, mode: GameMode = this.gameMode): void {
+  private rebuildRace(subject: SubjectFilter, mode: PlayableGameMode = this.activeMode): void {
     // Dispose old course meshes cleanly
     this.clearGroup(this.courseGroup);
     this.platformMeshes.clear();
     this.sweeperRotors.clear();
+    this.laserMeshes.clear();
     this.bumperMeshes.clear();
     this.starMeshes.clear();
     this.gateVisuals = [];
@@ -423,8 +474,31 @@ export class ArhamGameEngine {
 
       let topMat: THREE.MeshStandardMaterial;
       let sideColor = 0x1e3a8a;
+      let railColor = 0xfef08a;
 
-      if (plat.kind === 'ruler_bridge') {
+      if (plat.surface === 'ice') {
+        const tex = createIceTrackTexture(this.maxAniso);
+        tex.repeat.set(Math.max(1, Math.round(plat.width / 8)), Math.max(1, Math.round(plat.length / 8)));
+        topMat = new THREE.MeshStandardMaterial({
+          map: tex,
+          color: 0xffffff,
+          roughness: 0.14,
+          metalness: 0.18,
+        });
+        sideColor = 0x0369a1;
+        railColor = 0xe0f2fe;
+      } else if (plat.surface === 'neon') {
+        const tex = createNeonTrackTexture(this.maxAniso);
+        tex.repeat.set(Math.max(1, Math.round(plat.width / 8)), Math.max(1, Math.round(plat.length / 8)));
+        topMat = new THREE.MeshStandardMaterial({
+          map: tex,
+          color: 0xffffff,
+          roughness: 0.34,
+          metalness: 0.26,
+        });
+        sideColor = 0x0f172a;
+        railColor = 0x22d3ee;
+      } else if (plat.kind === 'ruler_bridge') {
         topMat = new THREE.MeshStandardMaterial({
           map: rulerTex,
           color: 0xffffff,
@@ -434,15 +508,17 @@ export class ArhamGameEngine {
         sideColor = 0x92400e;
       } else {
         const pair =
-          plat.kind === 'start'
-            ? ['#0284c7', '#0ea5e9']
-            : plat.kind === 'quiz_plaza'
-              ? ['#059669', '#10b981']
-              : plat.kind === 'finish'
-                ? ['#2563eb', '#3b82f6']
-                : plat.colorHex === 0xec4899
-                  ? ['#db2777', '#ec4899']
-                  : ['#4f46e5', '#6366f1'];
+          plat.colorHex === 0xf59e0b
+            ? ['#d97706', '#f59e0b']
+            : plat.kind === 'start'
+              ? ['#0284c7', '#0ea5e9']
+              : plat.kind === 'quiz_plaza'
+                ? ['#059669', '#10b981']
+                : plat.kind === 'finish'
+                  ? ['#2563eb', '#3b82f6']
+                  : plat.colorHex === 0xec4899
+                    ? ['#db2777', '#ec4899']
+                    : ['#4f46e5', '#6366f1'];
 
         const tex = createTrackTileTexture(pair[0], pair[1], this.maxAniso);
         tex.repeat.set(Math.max(1, Math.round(plat.width / 8)), Math.max(1, Math.round(plat.length / 8)));
@@ -466,9 +542,13 @@ export class ArhamGameEngine {
       deck.receiveShadow = true;
       platGroup.add(deck);
 
-      // Glossy yellow/white safety side rails along main tracks (not on bridges)
+      // Glossy safety side rails along main tracks (not on bridges)
       if (plat.kind !== 'ruler_bridge') {
-        const railMat = new THREE.MeshStandardMaterial({ color: 0xfef08a, roughness: 0.28, metalness: 0.15 });
+        const railMat = new THREE.MeshStandardMaterial({
+          color: railColor,
+          roughness: 0.24,
+          metalness: 0.18,
+        });
         const curbL = new THREE.Mesh(new THREE.BoxGeometry(0.42, 0.34, plat.length), railMat);
         curbL.position.set(-plat.width * 0.5 + 0.21, 0.17, 0);
         const curbR = new THREE.Mesh(new THREE.BoxGeometry(0.42, 0.34, plat.length), railMat);
@@ -520,6 +600,14 @@ export class ArhamGameEngine {
       this.sweeperRotors.set(sw.id, rotor);
     }
 
+    // Sweeping Neon Laser Barriers (Laser Dash mode)
+    for (const laser of this.course.lasers) {
+      const group = createLaserBarrierVisual(laser.width, laser.barHeight, laser.colorHex);
+      group.position.set(0, laser.y, getLaserBarrierZ(laser, 0));
+      this.courseGroup.add(group);
+      this.laserMeshes.set(laser.id, group);
+    }
+
     // Springy Bumpers
     for (const b of this.course.bumpers) {
       const group = createEraserBumper(b.radius, b.colorHex);
@@ -536,23 +624,35 @@ export class ArhamGameEngine {
       this.starMeshes.set(star.id, mesh);
     }
 
-    // Falling / Fake Tiles (2 zero-GC InstancedMeshes: glossy cap + dark beveled pedestal)
+    // Falling Tiles (Tile Fall squares OR Honey Drop hexagons — 2 zero-GC InstancedMeshes)
     if (this.course.fallingTiles.length > 0) {
       const count = this.course.fallingTiles.length;
-      const tileSize = this.course.fallingTiles[0].size;
-      const capGeo = new THREE.BoxGeometry(tileSize, 0.24, tileSize);
+      const firstTile = this.course.fallingTiles[0];
+      const isHex = firstTile.shape === 'hex';
+      const tileSize = firstTile.size;
+
+      const capGeo = isHex
+        ? new THREE.CylinderGeometry(HONEY_DROP_CONSTANTS.hexRadius, HONEY_DROP_CONSTANTS.hexRadius, 0.26, 6)
+        : new THREE.BoxGeometry(tileSize, 0.24, tileSize);
       const capMat = new THREE.MeshStandardMaterial({
         color: 0xffffff,
-        roughness: 0.28,
-        metalness: 0.08,
+        roughness: isHex ? 0.24 : 0.28,
+        metalness: isHex ? 0.12 : 0.08,
       });
       this.tileCapMesh = new THREE.InstancedMesh(capGeo, capMat, count);
       this.tileCapMesh.frustumCulled = false;
       this.tileCapMesh.receiveShadow = true;
 
-      const baseGeo = new THREE.BoxGeometry(tileSize * 0.9, 0.34, tileSize * 0.9);
+      const baseGeo = isHex
+        ? new THREE.CylinderGeometry(
+            HONEY_DROP_CONSTANTS.hexRadius * 0.9,
+            HONEY_DROP_CONSTANTS.hexRadius * 0.84,
+            0.34,
+            6,
+          )
+        : new THREE.BoxGeometry(tileSize * 0.9, 0.34, tileSize * 0.9);
       const baseMat = new THREE.MeshStandardMaterial({
-        color: 0x1e293b,
+        color: isHex ? 0x78350f : 0x1e293b,
         roughness: 0.56,
         metalness: 0.14,
       });
@@ -674,6 +774,16 @@ export class ArhamGameEngine {
             this.hitstopTimer = 0.055;
             this.cameraTrauma = Math.min(1, this.cameraTrauma + 0.72);
             this.particleVfx.emitHurdleImpact(ev.x, ev.y, ev.z, 'sweeper');
+          }
+          break;
+        case 'laser_hit':
+          if (ev.isPlayer) {
+            this.sound.playLaserZap();
+            this.hitstopTimer = 0.048;
+            this.cameraTrauma = Math.min(1, this.cameraTrauma + 0.65);
+            this.particleVfx.emitHurdleImpact(ev.x, ev.y, ev.z, 'laser');
+          } else {
+            this.particleVfx.emitSimpleBurst(ev.x, ev.y, ev.z, 8, [0x22d3ee, 0xf43f5e], 6.0, 'spark');
           }
           break;
         case 'speedpad':
@@ -806,7 +916,22 @@ export class ArhamGameEngine {
           }
           break;
         case 'tile_fake':
-          if (ev.isPlayer) {
+          if (this.course.mode === 'honey_drop') {
+            if (ev.isPlayer) {
+              this.sound.playHoneyCrack();
+              this.particleVfx.emitSimpleBurst(
+                ev.x,
+                ev.y + 0.15,
+                ev.z,
+                8,
+                [0xfbbf24, 0xf97316, 0xfef08a],
+                4.5,
+                'spark',
+              );
+            } else {
+              this.particleVfx.emitSimpleBurst(ev.x, ev.y + 0.15, ev.z, 4, [0xfbbf24, 0xf97316], 3.5, 'debris');
+            }
+          } else if (ev.isPlayer) {
             this.sound.playTileBreak();
             this.cameraTrauma = Math.min(1, this.cameraTrauma + 0.35);
             this.particleVfx.emitHurdleImpact(ev.x, ev.y + 0.15, ev.z, 'bumper');
@@ -1003,6 +1128,7 @@ export class ArhamGameEngine {
 
     const hud: HudSnapshot = {
       mode: this.course.mode,
+      selectedMode: this.selectedMode,
       rank,
       totalRacers: this.racers.length,
       score: Math.round(this.score),
@@ -1054,18 +1180,31 @@ export class ArhamGameEngine {
       let offsetZ = 0;
       let rx = tile.rotX;
       let rz = tile.rotZ;
+      let scaleXZ = 1;
+      const isHex = tile.shape === 'hex';
 
       if (tile.state === 'safe_revealed') {
         offsetY = Math.sin(tile.revealPop * Math.PI) * 0.16;
         _tileColor.setHex(0x16a34a); // Vivid emerald green safe path!
       } else if (tile.state === 'shaking') {
-        offsetX = Math.sin(t * 58 + i) * 0.11;
-        offsetZ = Math.cos(t * 54 + i) * 0.11;
-        rx = Math.sin(t * 48 + i) * 0.14;
-        rz = Math.cos(t * 46 + i) * 0.14;
-        _tileColor.setHex(0xdc2626); // Bright crimson crack telegraph!
+        const intensity = isHex ? 0.08 : 0.11;
+        offsetX = Math.sin(t * 58 + i) * intensity;
+        offsetZ = Math.cos(t * 54 + i) * intensity;
+        rx = Math.sin(t * 48 + i) * 0.12;
+        rz = Math.cos(t * 46 + i) * 0.12;
+        if (isHex) {
+          // Honey Drop warning progression: blazing orange -> hot crimson as crumble nears
+          _tileColor.setHex(tile.shakeTimer > 0.22 ? 0xf97316 : 0xdc2626);
+          scaleXZ = 0.94 + Math.sin(t * 40 + i) * 0.04;
+        } else {
+          _tileColor.setHex(0xdc2626); // Bright crimson crack telegraph!
+        }
       } else if (tile.state === 'falling') {
-        _tileColor.setHex(0xdc2626);
+        _tileColor.setHex(isHex ? 0xea580c : 0xdc2626);
+      } else if (isHex) {
+        // Warm golden honeycomb alternating tones
+        const isHoneyA = (tile.row + tile.col) % 2 === 0;
+        _tileColor.setHex(isHoneyA ? 0xf59e0b : 0xfbbf24);
       } else {
         // Hidden mystery tile: high-contrast Stumble Guys amber-gold & royal-indigo checkerboard
         const isCheckerA = (tile.row + tile.col) % 2 === 0;
@@ -1084,15 +1223,15 @@ export class ArhamGameEngine {
       // Top glossy tile cap (top flush at tile.y)
       _tileDummy.position.set(tile.x + offsetX, tile.y - 0.12 + offsetY, tile.z + offsetZ);
       _tileDummy.rotation.set(rx, 0, rz);
-      _tileDummy.scale.set(1, 1, 1);
+      _tileDummy.scale.set(scaleXZ, 1, scaleXZ);
       _tileDummy.updateMatrix();
       this.tileCapMesh.setMatrixAt(i, _tileDummy.matrix);
       this.tileCapMesh.setColorAt(i, _tileColor);
 
-      // Dark navy beveled under-pedestal beneath the cap
+      // Beveled under-pedestal beneath the cap
       _tileDummy.position.set(tile.x + offsetX, tile.y - 0.4 + offsetY, tile.z + offsetZ);
       _tileDummy.rotation.set(rx, 0, rz);
-      _tileDummy.scale.set(1, 1, 1);
+      _tileDummy.scale.set(scaleXZ, 1, scaleXZ);
       _tileDummy.updateMatrix();
       this.tileBaseMesh.setMatrixAt(i, _tileDummy.matrix);
     }
@@ -1105,7 +1244,7 @@ export class ArhamGameEngine {
   }
 
   private syncVisuals(dt: number): void {
-    // 1. Dynamic Platforms (Moving Wooden Rulers)
+    // 1. Dynamic Platforms (Moving Wooden Rulers & Ice Bridges)
     const animTime = this.gameState === 'playing' ? this.elapsedTime : this.worldTime;
     for (const plat of this.course.platforms) {
       if (plat.moveAxis === 'x') {
@@ -1116,7 +1255,7 @@ export class ArhamGameEngine {
       }
     }
 
-    // 1b. Falling / Fake Tiles InstancedMesh animation & color states
+    // 1b. Falling / Honey Hex Tiles InstancedMesh animation & color states
     if (this.tileCapMesh && this.tileBaseMesh && this.course.fallingTiles.length > 0) {
       this.syncFallingTilesVisuals();
     }
@@ -1126,6 +1265,14 @@ export class ArhamGameEngine {
       const rotor = this.sweeperRotors.get(sw.id);
       if (rotor) {
         rotor.rotation.y = -getSweeperAngle(sw.speed, sw.phase, animTime);
+      }
+    }
+
+    // 2b. Sweeping Neon Laser Barriers
+    for (const laser of this.course.lasers) {
+      const mesh = this.laserMeshes.get(laser.id);
+      if (mesh) {
+        mesh.position.z = getLaserBarrierZ(laser, animTime);
       }
     }
 
@@ -1355,12 +1502,16 @@ export class ArhamGameEngine {
           if (this.course.fallingTiles.length > 0) {
             const tileStep = stepFallingTiles(this.course.fallingTiles, dt);
             for (const fallen of tileStep.newlyFallenTiles) {
+              const debrisColors =
+                fallen.shape === 'hex'
+                  ? [0xf59e0b, 0xfbbf24, 0xf97316, 0x78350f]
+                  : [0xef4444, 0xf97316, 0xfef08a, 0x1e293b];
               this.particleVfx.emitSimpleBurst(
                 fallen.x,
                 fallen.baseY + 0.1,
                 fallen.z,
                 12,
-                [0xef4444, 0xf97316, 0xfef08a, 0x1e293b],
+                debrisColors,
                 6.2,
                 'debris',
               );

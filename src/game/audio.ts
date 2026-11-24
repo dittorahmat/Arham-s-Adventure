@@ -354,6 +354,18 @@ export class SoundEngine {
     this.playTone(170 * jitter, 65 * jitter, 0.18, 'triangle', 0.12, 0.04);
   }
 
+  public playHoneyCrack(): void {
+    const jitter = 0.94 + Math.random() * 0.12;
+    this.playTone(540 * jitter, 260 * jitter, 0.11, 'triangle', 0.12);
+    this.playTone(320 * jitter, 140 * jitter, 0.14, 'sine', 0.1, 0.04);
+  }
+
+  public playLaserZap(): void {
+    const jitter = 0.95 + Math.random() * 0.1;
+    this.playTone(1120 * jitter, 220 * jitter, 0.18, 'sawtooth', 0.14);
+    this.playTone(860 * jitter, 140 * jitter, 0.2, 'square', 0.09, 0.03);
+  }
+
   public playRespawn(): void {
     this.playTone(300, 180, 0.15, 'sine', 0.1, 0);
     this.playTone(320, 520, 0.18, 'triangle', 0.11, 0.14);

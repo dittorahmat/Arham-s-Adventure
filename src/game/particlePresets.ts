@@ -1,6 +1,6 @@
 export type ParticleKind = 'confetti' | 'spark' | 'debris';
 
-export type HurdleKind = 'bumper' | 'sweeper' | 'wrong_door';
+export type HurdleKind = 'bumper' | 'sweeper' | 'wrong_door' | 'laser';
 
 export interface ParticleSlot {
   active: boolean;
@@ -257,6 +257,60 @@ export function getHurdleImpactSpec(kind: HurdleKind): BurstEffectSpec {
           startRadius: 0.45,
           endRadius: 3.2,
           thickness: 0.2,
+          duration: 0.34,
+        },
+      ],
+    };
+  }
+
+  if (kind === 'laser') {
+    return {
+      layers: [
+        {
+          kind: 'spark',
+          count: 26,
+          colors: [0x22d3ee, 0xf43f5e, 0xe879f9, 0xffffff],
+          speedMin: 8.0,
+          speedMax: 15.0,
+          vyMin: 3.2,
+          vyMax: 9.6,
+          spreadXZ: 0.7,
+          spreadY: 0.55,
+          gravity: 13.5,
+          drag: 1.4,
+          lifeMin: 0.34,
+          lifeMax: 0.7,
+          scaleMin: 0.9,
+          scaleMax: 1.55,
+          bounceFloor: false,
+        },
+        {
+          kind: 'debris',
+          count: 10,
+          colors: [0x38bdf8, 0xf472b6, 0xffffff],
+          speedMin: 4.5,
+          speedMax: 9.0,
+          vyMin: 3.0,
+          vyMax: 7.5,
+          spreadXZ: 0.6,
+          spreadY: 0.4,
+          gravity: 21.0,
+          drag: 0.45,
+          lifeMin: 0.4,
+          lifeMax: 0.72,
+          scaleMin: 0.65,
+          scaleMax: 1.15,
+          bounceFloor: true,
+        },
+      ],
+      shockwaves: [
+        {
+          color: 0x22d3ee,
+          vertical: true,
+          offsetY: 0.85,
+          startRadius: 0.45,
+          endRadius: 3.6,
+          thickness: 0.22,
           duration: 0.34,
         },
       ],

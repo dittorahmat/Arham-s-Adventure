@@ -7,11 +7,20 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { PlayingHud } from './components/PlayingHud';
 import { StatusModals } from './components/StatusModals';
 import { TitleOverlay } from './components/TitleOverlay';
+import { parseGameModeParam } from './game/gameModes';
 import { ArhamGameEngine } from './game/ThreeEngine';
-import { GameMode, GameOverSnapshot, GameState, HudSnapshot, SubjectFilter } from './game/types';
+import {
+  GameModeSelection,
+  GameOverSnapshot,
+  GameState,
+  HudSnapshot,
+  PlayableGameMode,
+  SubjectFilter,
+} from './game/types';
 
 const INITIAL_HUD: HudSnapshot = {
   mode: 'classic',
+  selectedMode: 'random',
   rank: 1,
   totalRacers: 6,
   score: 0,
@@ -33,7 +42,8 @@ export default function App() {
   const engineRef = useRef<ArhamGameEngine | null>(null);
 
   const [gameState, setGameState] = useState<GameState>('title');
-  const [selectedMode, setSelectedMode] = useState<GameMode>('classic');
+  const [selectedMode, setSelectedMode] = useState<GameModeSelection>('random');
+  const [previewMode, setPreviewMode] = useState<PlayableGameMode>('classic');
   const [selectedSubject, setSelectedSubject] = useState<SubjectFilter>('semua');
   const [hud, setHud] = useState<HudSnapshot>(INITIAL_HUD);
   const [gameOver, setGameOver] = useState<GameOverSnapshot | null>(null);
@@ -45,6 +55,7 @@ export default function App() {
     onHudUpdate: (h: HudSnapshot) => setHud(h),
     onGameOver: (g: GameOverSnapshot) => setGameOver(g),
     onMuteChange: (m: boolean) => setMuted(m),
+    onActiveModeChange: (m: PlayableGameMode) => setPreviewMode(m),
   });
 
   useEffect(() => {
@@ -57,13 +68,15 @@ export default function App() {
       onHudUpdate: (h) => callbacksRef.current.onHudUpdate(h),
       onGameOver: (g) => callbacksRef.current.onGameOver(g),
       onMuteChange: (m) => callbacksRef.current.onMuteChange(m),
+      onActiveModeChange: (m) => callbacksRef.current.onActiveModeChange(m),
     });
     engineRef.current = engine;
+    setPreviewMode(engine.getActiveMode());
 
-    // Support ?mode=tile_fall, ?autostart=1, and ?preview_gameover=1 for direct-entry & testing
+    // Support ?mode=<random|classic|tile_fall|ice_slide|laser_dash|honey_drop>, ?autostart=1, and ?preview_gameover=1
     const params = new URLSearchParams(window.location.search);
-    const initialMode: GameMode = params.get('mode') === 'tile_fall' ? 'tile_fall' : 'classic';
-    if (initialMode !== 'classic') {
+    const initialMode = parseGameModeParam(params.get('mode'));
+    if (initialMode !== 'random') {
       setSelectedMode(initialMode);
       engine.setGameMode(initialMode);
     }
@@ -79,7 +92,7 @@ export default function App() {
     };
   }, []);
 
-  const handleSelectMode = useCallback((mode: GameMode) => {
+  const handleSelectMode = useCallback((mode: GameModeSelection) => {
     setSelectedMode(mode);
     engineRef.current?.setGameMode(mode);
   }, []);
@@ -136,6 +149,7 @@ export default function App() {
       {gameState === 'title' && (
         <TitleOverlay
           selectedMode={selectedMode}
+          previewMode={previewMode}
           onSelectMode={handleSelectMode}
           selectedSubject={selectedSubject}
           onSelectSubject={handleSelectSubject}

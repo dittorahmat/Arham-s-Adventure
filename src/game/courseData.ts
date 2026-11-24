@@ -1,11 +1,13 @@
+import { generateHoneyHexGrid } from './gameModes';
 import { generateTileGrid } from './tileFall';
 import {
   AiPolicy,
   BumperDef,
   CourseLayout,
   FallingTileDef,
-  GameMode,
+  LaserBarrierDef,
   PlatformDef,
+  PlayableGameMode,
   QuizGateDef,
   QuizQuestion,
   RacerState,
@@ -109,11 +111,20 @@ function createQuizGate(
 
 export function createCourseLayout(
   questions: QuizQuestion[],
-  mode: GameMode = 'classic',
+  mode: PlayableGameMode = 'classic',
   seed = Date.now(),
 ): CourseLayout {
   if (mode === 'tile_fall') {
     return createTileFallCourseLayout(questions, seed);
+  }
+  if (mode === 'ice_slide') {
+    return createIceSlideCourseLayout(questions);
+  }
+  if (mode === 'laser_dash') {
+    return createLaserDashCourseLayout(questions);
+  }
+  if (mode === 'honey_drop') {
+    return createHoneyDropCourseLayout(questions, seed);
   }
 
   if (questions.length < 5) {
@@ -326,6 +337,7 @@ export function createCourseLayout(
     platforms,
     fallingTiles: [],
     sweepers,
+    lasers: [],
     bumpers,
     speedPads,
     stars,
@@ -462,12 +474,444 @@ function createTileFallCourseLayout(questions: QuizQuestion[], seed: number): Co
     platforms,
     fallingTiles,
     sweepers: [],
+    lasers: [],
     bumpers: [],
     speedPads,
     stars,
     quizGates,
     startZ: 0,
     finishZ: -132,
+    timeLimitSeconds: 150,
+  };
+}
+
+/**
+ * Seluncur Es (Icy Heights / Super Slide):
+ * Low-friction crystalline ice runways, boost slides, frosted snow bumpers,
+ * sliding ice bridges, and 4 Grade 5 SD Quiz Gates where early drift aiming shines!
+ */
+function createIceSlideCourseLayout(questions: QuizQuestion[]): CourseLayout {
+  if (questions.length < 4) {
+    throw new Error('Ice Slide layout requires at least 4 quiz questions.');
+  }
+
+  const platforms: PlatformDef[] = [
+    // Frosted Start Plaza -> First Slippery Drift Runway (z: +6 to -48)
+    {
+      id: 'ice-start',
+      x: 0,
+      y: 0,
+      z: -21,
+      width: 16.5,
+      height: 2.4,
+      length: 54,
+      kind: 'start',
+      surface: 'ice',
+      colorHex: 0x38bdf8,
+    },
+    // Long Super-Slide Ice Track with Snow Bumpers (z: -50 to -102)
+    {
+      id: 'ice-slide-1',
+      x: 0,
+      y: -0.25,
+      z: -76,
+      width: 15.8,
+      height: 2.4,
+      length: 52,
+      kind: 'track',
+      surface: 'ice',
+      colorHex: 0x0ea5e9,
+    },
+    // Sliding Glacial Ice Bridges over Chasm
+    {
+      id: 'ice-bridge-1',
+      x: -2.4,
+      y: -0.2,
+      z: -109.5,
+      width: 7.8,
+      height: 1.2,
+      length: 11,
+      kind: 'ruler_bridge',
+      surface: 'ice',
+      colorHex: 0x7dd3fc,
+      moveAxis: 'x',
+      moveAmp: 3.4,
+      moveSpeed: 1.3,
+      movePhase: 0.2,
+    },
+    {
+      id: 'ice-bridge-2',
+      x: 2.4,
+      y: -0.1,
+      z: -122.5,
+      width: 7.8,
+      height: 1.2,
+      length: 11,
+      kind: 'ruler_bridge',
+      surface: 'ice',
+      colorHex: 0x7dd3fc,
+      moveAxis: 'x',
+      moveAmp: 3.4,
+      moveSpeed: 1.4,
+      movePhase: Math.PI + 0.2,
+    },
+    // Frosted Quiz Plaza 3 -> Glacier Slalom Track (z: -130 to -186)
+    {
+      id: 'ice-slalom-2',
+      x: 0,
+      y: 0,
+      z: -158,
+      width: 16,
+      height: 2.4,
+      length: 56,
+      kind: 'track',
+      surface: 'ice',
+      colorHex: 0x0284c7,
+    },
+    // Final Ice Sprint + Finish Podium (z: -188 to -234)
+    {
+      id: 'ice-finish',
+      x: 0,
+      y: 0.2,
+      z: -211,
+      width: 17,
+      height: 2.8,
+      length: 46,
+      kind: 'finish',
+      surface: 'ice',
+      colorHex: 0x38bdf8,
+    },
+  ];
+
+  const bumpers: BumperDef[] = [
+    { id: 'ice-bump-1', x: -3.8, y: 0, z: -17, radius: 1.3, colorHex: 0x67e8f9 },
+    { id: 'ice-bump-2', x: 3.8, y: 0, z: -17, radius: 1.3, colorHex: 0x67e8f9 },
+    { id: 'ice-bump-3', x: 0, y: 0, z: -26, radius: 1.35, colorHex: 0x38bdf8, moveAmp: 4.0, moveSpeed: 1.45, movePhase: 0 },
+    { id: 'ice-bump-4', x: -4.2, y: -0.25, z: -61, radius: 1.35, colorHex: 0xa5f3fc },
+    { id: 'ice-bump-5', x: 0, y: -0.25, z: -69, radius: 1.4, colorHex: 0x22d3ee, moveAmp: 4.2, moveSpeed: 1.75, movePhase: 1.2 },
+    { id: 'ice-bump-6', x: 4.2, y: -0.25, z: -78, radius: 1.35, colorHex: 0xa5f3fc },
+    { id: 'ice-bump-7', x: -3.2, y: 0, z: -154, radius: 1.35, colorHex: 0x67e8f9, moveAmp: 2.4, moveSpeed: 1.85, movePhase: 0.4 },
+    { id: 'ice-bump-8', x: 3.2, y: 0, z: -162, radius: 1.35, colorHex: 0x22d3ee, moveAmp: 2.4, moveSpeed: 1.85, movePhase: 3.5 },
+  ];
+
+  const sweepers: SweeperDef[] = [
+    {
+      id: 'ice-sweeper-1',
+      x: 0,
+      y: 0,
+      z: -168,
+      armLength: 6.4,
+      barHeight: 0.72,
+      speed: 1.5,
+      phase: 0.4,
+    },
+  ];
+
+  const speedPads: SpeedPadDef[] = [
+    { id: 'ice-pad-1', x: 0, y: 0, z: -9, width: 4.4, length: 5.0 },
+    { id: 'ice-pad-2', x: 0, y: -0.25, z: -55, width: 4.6, length: 5.2 },
+    { id: 'ice-pad-3', x: 0, y: -0.25, z: -83, width: 4.4, length: 5.0 },
+    { id: 'ice-pad-4', x: 0, y: 0, z: -146, width: 4.6, length: 5.2 },
+    { id: 'ice-pad-5', x: 0, y: 0.2, z: -210, width: 5.0, length: 5.4 },
+  ];
+
+  const stars: StarPickupDef[] = [
+    { id: 'ice-star-1', x: 0, y: 1.1, z: -17, collected: false },
+    { id: 'ice-star-2', x: -4.2, y: 1.1, z: -29, collected: false },
+    { id: 'ice-star-3', x: 4.2, y: 1.1, z: -29, collected: false },
+    { id: 'ice-star-4', x: 0, y: 0.9, z: -61, collected: false },
+    { id: 'ice-star-5', x: -3.8, y: 0.9, z: -78, collected: false },
+    { id: 'ice-star-6', x: 0, y: 1.1, z: -109.5, collected: false },
+    { id: 'ice-star-7', x: 0, y: 1.2, z: -122.5, collected: false },
+    { id: 'ice-star-8', x: 0, y: 1.1, z: -158, collected: false },
+    { id: 'ice-star-9', x: 0, y: 2.0, z: -168, collected: false },
+    { id: 'ice-star-10', x: 0, y: 1.4, z: -212, collected: false },
+  ];
+
+  const quizGates: QuizGateDef[] = [
+    createQuizGate(0, -40, 0, questions[0]),
+    createQuizGate(1, -93, -0.25, questions[1]),
+    createQuizGate(2, -138, 0, questions[2]),
+    createQuizGate(3, -198, 0.2, questions[3]),
+  ];
+
+  return {
+    mode: 'ice_slide',
+    platforms,
+    fallingTiles: [],
+    sweepers,
+    lasers: [],
+    bumpers,
+    speedPads,
+    stars,
+    quizGates,
+    startZ: 0,
+    finishZ: -222,
+    timeLimitSeconds: 165,
+  };
+}
+
+/**
+ * Lari Laser (Laser Dash / Block Dash):
+ * Cyber-neon sprint deck featuring rhythmic sweeping horizontal Laser Beams
+ * that players and AI must leap cleanly over, paired with 4 Grade 5 SD Quiz Gates!
+ */
+function createLaserDashCourseLayout(questions: QuizQuestion[]): CourseLayout {
+  if (questions.length < 4) {
+    throw new Error('Laser Dash layout requires at least 4 quiz questions.');
+  }
+
+  const platforms: PlatformDef[] = [
+    // Corridor 1: Start Plaza -> First Laser Beams -> Quiz Gate 1 (z: +6 to -48)
+    {
+      id: 'ld-deck-1',
+      x: 0,
+      y: 0,
+      z: -21,
+      width: 16,
+      height: 2.4,
+      length: 54,
+      kind: 'start',
+      surface: 'neon',
+      colorHex: 0x0f172a,
+    },
+    // Corridor 2: Twin Counter-Sweeping Laser Gauntlet -> Quiz Gate 2 (z: -50 to -104)
+    {
+      id: 'ld-deck-2',
+      x: 0,
+      y: 0,
+      z: -77,
+      width: 16,
+      height: 2.4,
+      length: 54,
+      kind: 'track',
+      surface: 'neon',
+      colorHex: 0x1e1b4b,
+    },
+    // Corridor 3: High-Tempo Triple Laser Zone -> Quiz Gate 3 (z: -106 to -160)
+    {
+      id: 'ld-deck-3',
+      x: 0,
+      y: 0.2,
+      z: -133,
+      width: 16,
+      height: 2.4,
+      length: 54,
+      kind: 'track',
+      surface: 'neon',
+      colorHex: 0x0f172a,
+    },
+    // Final Neon Dash + Quiz Gate 4 + Finish Podium (z: -162 to -212)
+    {
+      id: 'ld-finish',
+      x: 0,
+      y: 0.4,
+      z: -187,
+      width: 17,
+      height: 2.8,
+      length: 50,
+      kind: 'finish',
+      surface: 'neon',
+      colorHex: 0x1e1b4b,
+    },
+  ];
+
+  const lasers: LaserBarrierDef[] = [
+    // Corridor 1: Welcoming rhythm lasers
+    { id: 'laser-1', zMin: -28, zMax: -11, y: 0, barHeight: 0.68, width: 15.2, speed: 1.25, phase: 0.2, colorHex: 0xf43f5e },
+    { id: 'laser-2', zMin: -33, zMax: -16, y: 0, barHeight: 0.68, width: 15.2, speed: 1.25, phase: Math.PI + 0.2, colorHex: 0x22d3ee },
+    // Corridor 2: Dual staggered sweepers
+    { id: 'laser-3', zMin: -72, zMax: -54, y: 0, barHeight: 0.68, width: 15.2, speed: 1.55, phase: 0.5, colorHex: 0xe879f9 },
+    { id: 'laser-4', zMin: -86, zMax: -66, y: 0, barHeight: 0.68, width: 15.2, speed: 1.7, phase: 2.1, colorHex: 0xf43f5e },
+    { id: 'laser-5', zMin: -89, zMax: -70, y: 0, barHeight: 0.68, width: 15.2, speed: 1.4, phase: 4.3, colorHex: 0x22d3ee },
+    // Corridor 3: High-tempo triple neon wave
+    { id: 'laser-6', zMin: -125, zMax: -110, y: 0.2, barHeight: 0.68, width: 15.2, speed: 1.85, phase: 0, colorHex: 0xf43f5e },
+    { id: 'laser-7', zMin: -138, zMax: -121, y: 0.2, barHeight: 0.68, width: 15.2, speed: 1.95, phase: 1.9, colorHex: 0x22d3ee },
+    { id: 'laser-8', zMin: -146, zMax: -131, y: 0.2, barHeight: 0.68, width: 15.2, speed: 1.8, phase: 3.9, colorHex: 0xe879f9 },
+    // Final sprint laser before last quiz gate
+    { id: 'laser-9', zMin: -178, zMax: -165, y: 0.4, barHeight: 0.68, width: 15.8, speed: 2.0, phase: 0.8, colorHex: 0xf43f5e },
+  ];
+
+  const speedPads: SpeedPadDef[] = [
+    { id: 'ld-pad-1', x: 0, y: 0, z: -8, width: 3.8, length: 4.5 },
+    { id: 'ld-pad-2', x: 0, y: 0, z: -53, width: 3.8, length: 4.5 },
+    { id: 'ld-pad-3', x: 0, y: 0.2, z: -109, width: 3.8, length: 4.5 },
+    { id: 'ld-pad-4', x: 0, y: 0.4, z: -195, width: 4.8, length: 5.0 },
+  ];
+
+  const stars: StarPickupDef[] = [
+    { id: 'ld-star-1', x: -3.2, y: 1.85, z: -19, collected: false },
+    { id: 'ld-star-2', x: 3.2, y: 1.85, z: -26, collected: false },
+    { id: 'ld-star-3', x: 0, y: 1.95, z: -63, collected: false },
+    { id: 'ld-star-4', x: -3.8, y: 1.95, z: -76, collected: false },
+    { id: 'ld-star-5', x: 3.8, y: 1.95, z: -83, collected: false },
+    { id: 'ld-star-6', x: 0, y: 2.1, z: -118, collected: false },
+    { id: 'ld-star-7', x: -3.5, y: 2.1, z: -130, collected: false },
+    { id: 'ld-star-8', x: 3.5, y: 2.1, z: -140, collected: false },
+    { id: 'ld-star-9', x: 0, y: 2.2, z: -171, collected: false },
+    { id: 'ld-star-10', x: 0, y: 1.6, z: -195, collected: false },
+  ];
+
+  const quizGates: QuizGateDef[] = [
+    createQuizGate(0, -40, 0, questions[0]),
+    createQuizGate(1, -96, 0, questions[1]),
+    createQuizGate(2, -153, 0.2, questions[2]),
+    createQuizGate(3, -186, 0.4, questions[3]),
+  ];
+
+  return {
+    mode: 'laser_dash',
+    platforms,
+    fallingTiles: [],
+    sweepers: [],
+    lasers,
+    bumpers: [],
+    speedPads,
+    stars,
+    quizGates,
+    startZ: 0,
+    finishZ: -203,
+    timeLimitSeconds: 165,
+  };
+}
+
+/**
+ * Jatuh Madu (Honey Drop / Hex-A-Gone Race):
+ * Every golden hexagonal honeycomb tile starts solid and crumbles 0.48s after ANY racer touches it!
+ * Keep hopping across 3 golden Hex Honeycomb Arenas separated by 3 Quiz Checkpoint Plazas.
+ */
+function createHoneyDropCourseLayout(questions: QuizQuestion[], seed: number): CourseLayout {
+  if (questions.length < 3) {
+    throw new Error('Honey Drop layout requires at least 3 quiz questions.');
+  }
+
+  const platforms: PlatformDef[] = [
+    // Start Plaza (z: +6.0 to -8.6)
+    {
+      id: 'hd-start',
+      x: 0,
+      y: 0,
+      z: -1.3,
+      width: 16,
+      height: 2.4,
+      length: 14.6,
+      kind: 'start',
+      colorHex: 0xf59e0b,
+    },
+    // Checkpoint Plaza 1 after Hex Arena 1 (z: -24.5 to -38.1)
+    {
+      id: 'hd-plaza-1',
+      x: 0,
+      y: 0,
+      z: -31.3,
+      width: 16,
+      height: 2.4,
+      length: 13.6,
+      kind: 'quiz_plaza',
+      colorHex: 0x10b981,
+    },
+    // Checkpoint Plaza 2 after Hex Arena 2 (z: -56.4 to -70.0)
+    {
+      id: 'hd-plaza-2',
+      x: 0,
+      y: 0.2,
+      z: -63.2,
+      width: 16,
+      height: 2.4,
+      length: 13.6,
+      kind: 'quiz_plaza',
+      colorHex: 0x10b981,
+    },
+    // Final Quiz & Finish Podium after Hex Arena 3 (z: -91.0 to -125.0)
+    {
+      id: 'hd-finish',
+      x: 0,
+      y: 0.5,
+      z: -108.0,
+      width: 17,
+      height: 2.8,
+      length: 34,
+      kind: 'finish',
+      colorHex: 0xf59e0b,
+    },
+  ];
+
+  // 3 Golden Hexagonal Honeycomb Arenas (5 + 6 + 7 rows)
+  const hex1 = generateHoneyHexGrid({
+    gridIndex: 0,
+    rows: 5,
+    cols: 6,
+    startZ: -10.6,
+    y: 0,
+    seed: seed ^ 0x2b4d6f,
+  });
+  const hex2 = generateHoneyHexGrid({
+    gridIndex: 1,
+    rows: 6,
+    cols: 6,
+    startZ: -40.2,
+    y: 0.2,
+    seed: seed ^ 0x5c7e9a,
+  });
+  const hex3 = generateHoneyHexGrid({
+    gridIndex: 2,
+    rows: 7,
+    cols: 6,
+    startZ: -72.2,
+    y: 0.5,
+    seed: seed ^ 0x8d1f3b,
+  });
+
+  const fallingTiles: FallingTileDef[] = [...hex1, ...hex2, ...hex3];
+
+  const pickHexStar = (grid: FallingTileDef[], row: number, colOffset: number, id: string): StarPickupDef => {
+    const inRow = grid.filter((t) => t.row === row);
+    const idx = Math.max(0, Math.min(inRow.length - 1, Math.floor(inRow.length / 2) + colOffset));
+    const target = inRow[idx] ?? grid[0];
+    return {
+      id,
+      x: target.x,
+      y: target.baseY + 1.2,
+      z: target.z,
+      collected: false,
+    };
+  };
+
+  const stars: StarPickupDef[] = [
+    pickHexStar(hex1, 1, -1, 'hd-star-1'),
+    pickHexStar(hex1, 3, 1, 'hd-star-2'),
+    pickHexStar(hex2, 1, 1, 'hd-star-3'),
+    pickHexStar(hex2, 3, 0, 'hd-star-4'),
+    pickHexStar(hex2, 5, -1, 'hd-star-5'),
+    pickHexStar(hex3, 1, -1, 'hd-star-6'),
+    pickHexStar(hex3, 3, 1, 'hd-star-7'),
+    pickHexStar(hex3, 5, 0, 'hd-star-8'),
+    { id: 'hd-star-9', x: 0, y: 1.75, z: -109.0, collected: false },
+  ];
+
+  const speedPads: SpeedPadDef[] = [
+    { id: 'hd-pad-1', x: 0, y: 0.5, z: -95.0, width: 4.2, length: 4.5 },
+    { id: 'hd-pad-2', x: 0, y: 0.5, z: -109.0, width: 4.8, length: 4.8 },
+  ];
+
+  const quizGates: QuizGateDef[] = [
+    { ...createQuizGate(0, -31.8, 0, questions[0]), promptStartZ: -14 },
+    { ...createQuizGate(1, -63.8, 0.2, questions[1]), promptStartZ: -46 },
+    { ...createQuizGate(2, -102.0, 0.5, questions[2]), promptStartZ: -80 },
+  ];
+
+  return {
+    mode: 'honey_drop',
+    platforms,
+    fallingTiles,
+    sweepers: [],
+    lasers: [],
+    bumpers: [],
+    speedPads,
+    stars,
+    quizGates,
+    startZ: 0,
+    finishZ: -115,
     timeLimitSeconds: 150,
   };
 }

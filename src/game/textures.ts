@@ -54,6 +54,107 @@ export function createTrackTileTexture(
   return tex;
 }
 
+export function createIceTrackTexture(maxAniso: number): THREE.CanvasTexture {
+  const [canvas, ctx] = makeCanvas(512, 512);
+
+  // Glossy crystalline glacier ice gradient
+  const grad = ctx.createLinearGradient(0, 0, 512, 512);
+  grad.addColorStop(0, '#bae6fd');
+  grad.addColorStop(0.5, '#e0f2fe');
+  grad.addColorStop(1, '#7dd3fc');
+  ctx.fillStyle = grad;
+  ctx.fillRect(0, 0, 512, 512);
+
+  // Subtle icy checker facets for speed perception
+  ctx.fillStyle = 'rgba(255, 255, 255, 0.28)';
+  const cell = 128;
+  for (let row = 0; row < 4; row++) {
+    for (let col = 0; col < 4; col++) {
+      if ((row + col) % 2 === 0) {
+        ctx.fillRect(col * cell, row * cell, cell, cell);
+      }
+    }
+  }
+
+  // Diagonal crystal gloss reflections & frost cracks
+  ctx.strokeStyle = 'rgba(255, 255, 255, 0.72)';
+  ctx.lineWidth = 6;
+  for (let i = -256; i < 768; i += 128) {
+    ctx.beginPath();
+    ctx.moveTo(i, 0);
+    ctx.lineTo(i + 180, 512);
+    ctx.stroke();
+  }
+
+  ctx.strokeStyle = 'rgba(14, 165, 233, 0.26)';
+  ctx.lineWidth = 3;
+  for (let i = 0; i <= 512; i += 128) {
+    ctx.beginPath();
+    ctx.moveTo(i, 0);
+    ctx.lineTo(i, 512);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(0, i);
+    ctx.lineTo(512, i);
+    ctx.stroke();
+  }
+
+  // Center icy guide stripe
+  ctx.fillStyle = 'rgba(2, 132, 199, 0.22)';
+  ctx.fillRect(246, 0, 20, 512);
+
+  const tex = new THREE.CanvasTexture(canvas);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  tex.wrapS = THREE.RepeatWrapping;
+  tex.wrapT = THREE.RepeatWrapping;
+  tex.anisotropy = maxAniso;
+  return tex;
+}
+
+export function createNeonTrackTexture(maxAniso: number): THREE.CanvasTexture {
+  const [canvas, ctx] = makeCanvas(512, 512);
+
+  // Sleek obsidian-indigo cyber floor
+  ctx.fillStyle = '#0f172a';
+  ctx.fillRect(0, 0, 512, 512);
+
+  // Subtle dark-indigo tech tiles
+  ctx.fillStyle = '#1e1b4b';
+  const cell = 128;
+  for (let row = 0; row < 4; row++) {
+    for (let col = 0; col < 4; col++) {
+      if ((row + col) % 2 === 0) {
+        ctx.fillRect(col * cell + 4, row * cell + 4, cell - 8, cell - 8);
+      }
+    }
+  }
+
+  // Glowing cyan grid lines
+  ctx.strokeStyle = 'rgba(34, 211, 238, 0.42)';
+  ctx.lineWidth = 4;
+  for (let i = 0; i <= 512; i += 128) {
+    ctx.beginPath();
+    ctx.moveTo(i, 0);
+    ctx.lineTo(i, 512);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(0, i);
+    ctx.lineTo(512, i);
+    ctx.stroke();
+  }
+
+  // Center magenta/cyan neon sprint stripe
+  ctx.fillStyle = 'rgba(244, 63, 94, 0.55)';
+  ctx.fillRect(248, 0, 16, 512);
+
+  const tex = new THREE.CanvasTexture(canvas);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  tex.wrapS = THREE.RepeatWrapping;
+  tex.wrapT = THREE.RepeatWrapping;
+  tex.anisotropy = maxAniso;
+  return tex;
+}
+
 export function createSurfaceBumpTexture(): THREE.CanvasTexture {
   const [canvas, ctx] = makeCanvas(256, 256);
   ctx.fillStyle = '#808080';
