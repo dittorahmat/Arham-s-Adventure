@@ -5,14 +5,18 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { PlayingHud } from './components/PlayingHud';
+import { ReplayOverlay } from './components/ReplayOverlay';
 import { StatusModals } from './components/StatusModals';
 import { TitleOverlay } from './components/TitleOverlay';
 import { parseGameModeParam } from './game/gameModes';
+import { DEFAULT_GRADE_LEVEL, parseGradeParam } from './game/questions';
+import { ReplayHudSnapshot } from './game/replay';
 import { ArhamGameEngine } from './game/ThreeEngine';
 import {
   GameModeSelection,
   GameOverSnapshot,
   GameState,
+  GradeLevel,
   HudSnapshot,
   PlayableGameMode,
   SubjectFilter,
@@ -21,6 +25,7 @@ import {
 const INITIAL_HUD: HudSnapshot = {
   mode: 'classic',
   selectedMode: 'random',
+  grade: DEFAULT_GRADE_LEVEL,
   rank: 1,
   totalRacers: 6,
   score: 0,
@@ -42,10 +47,12 @@ export default function App() {
   const engineRef = useRef<ArhamGameEngine | null>(null);
 
   const [gameState, setGameState] = useState<GameState>('title');
+  const [selectedGrade, setSelectedGrade] = useState<GradeLevel>(DEFAULT_GRADE_LEVEL);
   const [selectedMode, setSelectedMode] = useState<GameModeSelection>('random');
   const [previewMode, setPreviewMode] = useState<PlayableGameMode>('classic');
   const [selectedSubject, setSelectedSubject] = useState<SubjectFilter>('semua');
   const [hud, setHud] = useState<HudSnapshot>(INITIAL_HUD);
+  const [replay, setReplay] = useState<ReplayHudSnapshot | null>(null);
   const [gameOver, setGameOver] = useState<GameOverSnapshot | null>(null);
   const [muted, setMuted] = useState(false);
 
@@ -53,6 +60,7 @@ export default function App() {
   const callbacksRef = useRef({
     onStateChange: (s: GameState) => setGameState(s),
     onHudUpdate: (h: HudSnapshot) => setHud(h),
+    onReplayUpdate: (r: ReplayHudSnapshot) => setReplay(r),
     onGameOver: (g: GameOverSnapshot) => setGameOver(g),
     onMuteChange: (m: boolean) => setMuted(m),
     onActiveModeChange: (m: PlayableGameMode) => setPreviewMode(m),
@@ -66,6 +74,7 @@ export default function App() {
     const engine = new ArhamGameEngine(mount, {
       onStateChange: (s) => callbacksRef.current.onStateChange(s),
       onHudUpdate: (h) => callbacksRef.current.onHudUpdate(h),
+      onReplayUpdate: (r) => callbacksRef.current.onReplayUpdate(r),
       onGameOver: (g) => callbacksRef.current.onGameOver(g),
       onMuteChange: (m) => callbacksRef.current.onMuteChange(m),
       onActiveModeChange: (m) => callbacksRef.current.onActiveModeChange(m),
@@ -73,23 +82,39 @@ export default function App() {
     engineRef.current = engine;
     setPreviewMode(engine.getActiveMode());
 
-    // Support ?mode=<random|classic|tile_fall|ice_slide|laser_dash|honey_drop>, ?autostart=1, and ?preview_gameover=1
+    // Support ?grade=1..6, ?mode=<random|classic|tile_fall|ice_slide|laser_dash|honey_drop>,
+    // ?autostart=1, ?preview_replay=1, and ?preview_gameover=1
     const params = new URLSearchParams(window.location.search);
+    const parsedGrade = parseGradeParam(params.get('grade'));
+    const initialGrade = parsedGrade ?? DEFAULT_GRADE_LEVEL;
+    if (parsedGrade !== null && parsedGrade !== DEFAULT_GRADE_LEVEL) {
+      setSelectedGrade(parsedGrade);
+      engine.setGradeLevel(parsedGrade);
+    }
+
     const initialMode = parseGameModeParam(params.get('mode'));
     if (initialMode !== 'random') {
       setSelectedMode(initialMode);
       engine.setGameMode(initialMode);
     }
-    if (params.get('preview_gameover') === '1') {
+
+    if (params.get('preview_replay') === '1') {
+      engine.previewFinishReplay();
+    } else if (params.get('preview_gameover') === '1') {
       engine.previewGameOver();
     } else if (params.get('autostart') === '1') {
-      engine.startGame('semua', initialMode);
+      engine.startGame('semua', initialMode, false, initialGrade);
     }
 
     return () => {
       engine.dispose();
       engineRef.current = null;
     };
+  }, []);
+
+  const handleSelectGrade = useCallback((grade: GradeLevel) => {
+    setSelectedGrade(grade);
+    engineRef.current?.setGradeLevel(grade);
   }, []);
 
   const handleSelectMode = useCallback((mode: GameModeSelection) => {
@@ -104,8 +129,9 @@ export default function App() {
 
   const handleStart = useCallback(() => {
     setGameOver(null);
-    engineRef.current?.startGame(selectedSubject, selectedMode);
-  }, [selectedSubject, selectedMode]);
+    setReplay(null);
+    engineRef.current?.startGame(selectedSubject, selectedMode, false, selectedGrade);
+  }, [selectedSubject, selectedMode, selectedGrade]);
 
   const handlePause = useCallback(() => {
     engineRef.current?.pauseGame();
@@ -117,12 +143,22 @@ export default function App() {
 
   const handleRestart = useCallback(() => {
     setGameOver(null);
+    setReplay(null);
     engineRef.current?.restartGame();
   }, []);
 
   const handleReturnTitle = useCallback(() => {
     setGameOver(null);
+    setReplay(null);
     engineRef.current?.returnToTitle();
+  }, []);
+
+  const handleSkipReplay = useCallback(() => {
+    engineRef.current?.skipReplay();
+  }, []);
+
+  const handleWatchReplay = useCallback(() => {
+    engineRef.current?.watchFinishReplay();
   }, []);
 
   const handleToggleMute = useCallback(() => {
@@ -148,6 +184,8 @@ export default function App() {
 
       {gameState === 'title' && (
         <TitleOverlay
+          selectedGrade={selectedGrade}
+          onSelectGrade={handleSelectGrade}
           selectedMode={selectedMode}
           previewMode={previewMode}
           onSelectMode={handleSelectMode}
@@ -170,13 +208,19 @@ export default function App() {
         />
       )}
 
+      {gameState === 'replay' && replay && (
+        <ReplayOverlay replay={replay} onSkip={handleSkipReplay} />
+      )}
+
       {(gameState === 'paused' || gameState === 'gameover') && (
         <StatusModals
           gameState={gameState}
+          activeGrade={selectedGrade}
           gameOver={gameOver}
           onResume={handleResume}
           onRestart={handleRestart}
           onReturnTitle={handleReturnTitle}
+          onWatchReplay={handleWatchReplay}
         />
       )}
     </main>

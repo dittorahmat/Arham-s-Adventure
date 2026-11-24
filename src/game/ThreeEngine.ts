@@ -47,7 +47,17 @@ import {
   PhysicsEvent,
   stepRacerPhysics,
 } from './physics';
-import { selectRaceQuestions } from './questions';
+import { DEFAULT_GRADE_LEVEL, selectRaceQuestions } from './questions';
+import {
+  computeReplayCameraPose,
+  createSyntheticFinishReplayClip,
+  FinishReplayClip,
+  getReplayCrossMarkerPct,
+  mapReplayPlaybackTime,
+  ReplayHudSnapshot,
+  ReplayRecorder,
+  sampleReplayFrame,
+} from './replay';
 import {
   createContactShadowTexture,
   createIceTrackTexture,
@@ -66,6 +76,7 @@ import {
   GameModeSelection,
   GameOverSnapshot,
   GameState,
+  GradeLevel,
   HudSnapshot,
   InputState,
   PlayableGameMode,
@@ -78,6 +89,7 @@ export interface EngineCallbacks {
   onStateChange: (state: GameState) => void;
   onHudUpdate: (hud: HudSnapshot) => void;
   onGameOver: (snapshot: GameOverSnapshot) => void;
+  onReplayUpdate?: (replay: ReplayHudSnapshot) => void;
   onMuteChange: (muted: boolean) => void;
   onActiveModeChange?: (mode: PlayableGameMode) => void;
 }
@@ -140,6 +152,7 @@ export class ArhamGameEngine {
   private gameState: GameState = 'title';
   private selectedMode: GameModeSelection = 'random';
   private activeMode: PlayableGameMode = resolveGameMode('random');
+  private selectedGrade: GradeLevel = DEFAULT_GRADE_LEVEL;
   private subjectFilter: SubjectFilter = 'semua';
   private elapsedTime = 0;
   private worldTime = 0;
@@ -158,6 +171,18 @@ export class ArhamGameEngine {
   private dailyChallenges: DailyChallengesState;
   private runDailyCompletedIds: string[] = [];
   private runDailyBonusPoints = 0;
+
+  // Finish-line 5-second cinematic slow-motion replay state
+  private replayRecorder = new ReplayRecorder();
+  private finishReplayClip: FinishReplayClip | null = null;
+  private replayElapsed = 0;
+  private replaySpeedFactor = 0.35;
+  private replayCrossedFinish = false;
+  private replayConfettiFired = false;
+  private replayCrossMarkerPct = 62;
+  private replayHudEmitAccum = 0;
+  private replaySourceRaceTime = 0;
+  private pendingGameOverSnapshot: GameOverSnapshot | null = null;
 
   // Input state
   private keysHeld = new Set<string>();
@@ -293,6 +318,13 @@ export class ArhamGameEngine {
     return this.activeMode;
   }
 
+  public setGradeLevel(grade: GradeLevel): void {
+    this.selectedGrade = grade;
+    if (this.gameState === 'title') {
+      this.rebuildRace(this.subjectFilter, this.activeMode);
+    }
+  }
+
   public setSubjectFilter(subject: SubjectFilter): void {
     this.subjectFilter = subject;
     if (this.gameState === 'title') {
@@ -316,8 +348,10 @@ export class ArhamGameEngine {
     subject?: SubjectFilter,
     modeSelection?: GameModeSelection,
     rerollIfRandom = false,
+    grade?: GradeLevel,
   ): void {
     this.sound.unlock();
+    if (grade) this.selectedGrade = grade;
     if (subject) this.subjectFilter = subject;
     if (modeSelection) {
       const selectionChanged = modeSelection !== this.selectedMode;
@@ -350,7 +384,9 @@ export class ArhamGameEngine {
 
     this.setGameState('playing');
     this.sound.startMusic(this.course.timeLimitSeconds, this.course.timeLimitSeconds);
-    // Immediately align camera behind Arham so there's no jarring jump
+    // Immediately align camera behind Arham and restore gameplay FOV
+    this.camera.fov = 56;
+    this.camera.updateProjectionMatrix();
     this.camera.position.set(0, 6.2, 10.2);
     this.camera.lookAt(0, 1.8, -12);
     this.emitHud();
@@ -375,18 +411,36 @@ export class ArhamGameEngine {
 
   public restartGame(): void {
     // In Random mode, restarting rolls a fresh playable mode for continuous surprise!
-    this.startGame(this.subjectFilter, this.selectedMode, this.selectedMode === 'random');
+    this.startGame(
+      this.subjectFilter,
+      this.selectedMode,
+      this.selectedMode === 'random',
+      this.selectedGrade,
+    );
   }
 
   public returnToTitle(): void {
     this.clearInputs();
     this.sound.stopMusic();
+    this.camera.fov = 56;
+    this.camera.updateProjectionMatrix();
     if (this.selectedMode === 'random') {
       this.activeMode = resolveGameMode('random', this.activeMode);
       this.callbacks.onActiveModeChange?.(this.activeMode);
     }
     this.rebuildRace(this.subjectFilter, this.activeMode);
     this.setGameState('title');
+  }
+
+  public skipReplay(): void {
+    if (this.gameState !== 'replay') return;
+    this.finishReplayToGameOver();
+  }
+
+  public watchFinishReplay(): void {
+    if (!this.finishReplayClip || !this.pendingGameOverSnapshot) return;
+    this.sound.unlock();
+    this.startFinishReplay();
   }
 
   public toggleMute(): boolean {
@@ -446,7 +500,7 @@ export class ArhamGameEngine {
     this.racerRigs = [];
     this.finishTrophy = null;
 
-    const questions = selectRaceQuestions(subject, 5);
+    const questions = selectRaceQuestions(subject, 5, undefined, this.selectedGrade);
     this.course = createCourseLayout(questions, mode);
     this.racers = createInitialRacers();
 
@@ -463,6 +517,12 @@ export class ArhamGameEngine {
     this.dailyChallenges = loadDailyChallenges();
     this.runDailyCompletedIds = [];
     this.runDailyBonusPoints = 0;
+    this.replayRecorder.reset();
+    this.finishReplayClip = null;
+    this.pendingGameOverSnapshot = null;
+    this.replayElapsed = 0;
+    this.replayConfettiFired = false;
+    this.replayCrossedFinish = false;
 
     // Build Platforms
     const rulerTex = createRulerTexture(this.maxAniso);
@@ -977,22 +1037,26 @@ export class ArhamGameEngine {
     return result;
   }
 
-  public previewGameOver(): void {
-    // Populates a realistic completed race snapshot (only used when ?preview_gameover=1 is requested)
-    this.rebuildRace(this.subjectFilter);
+  private populatePreviewVictoryRun(): void {
+    this.rebuildRace(this.subjectFilter, this.activeMode);
     this.elapsedTime = 41;
-    this.correctCount = 5;
-    this.starsCollected = 9;
+    this.correctCount = this.course.quizGates.length;
+    this.starsCollected = Math.min(9, this.course.stars.length);
     this.score = 1350;
+    const finishDeckY =
+      this.course.platforms.find((p) => p.kind === 'finish')?.y ?? 1.1;
+    this.racers[0].x = 0.25;
+    this.racers[0].y = finishDeckY;
     this.racers[0].z = this.course.finishZ;
+    this.racers[0].vz = -11.6;
     this.racers[0].finished = true;
     this.racers[0].finishTime = 41;
 
-    // Simulate answering 5 gates + collecting 9 stars for Daily Challenges
-    for (let i = 0; i < 5; i++) {
+    // Simulate answering gates + collecting stars for Daily Challenges
+    for (let i = 0; i < this.course.quizGates.length; i++) {
       this.recordDailyProgress({ type: 'quiz_correct', firstTry: true });
     }
-    this.recordDailyProgress({ type: 'star_collected', count: 9 });
+    this.recordDailyProgress({ type: 'star_collected', count: this.starsCollected });
 
     // Simulate reaching 10 correct answers in a row on the final gate
     this.achievementProfile = {
@@ -1016,10 +1080,107 @@ export class ArhamGameEngine {
         firstTryCorrect: true,
       });
     }
-    this.handleRunFinished('victory');
   }
 
-  private handleRunFinished(outcome: 'victory' | 'timeout'): void {
+  public previewGameOver(): void {
+    // Populates a realistic completed race snapshot (only used when ?preview_gameover=1 is requested)
+    this.populatePreviewVictoryRun();
+    this.handleRunFinished('victory', { skipReplay: true, syntheticReplay: true });
+  }
+
+  public previewFinishReplay(): void {
+    // Populates a realistic completed race and immediately launches the 5-second slow-mo finish replay (?preview_replay=1)
+    this.populatePreviewVictoryRun();
+    this.handleRunFinished('victory', { skipReplay: false, syntheticReplay: true });
+  }
+
+  private startFinishReplay(): void {
+    if (!this.finishReplayClip || !this.pendingGameOverSnapshot) return;
+    this.clearInputs();
+    this.replayElapsed = 0;
+    this.replayHudEmitAccum = 0;
+    this.replayConfettiFired = false;
+    this.replayCrossedFinish = false;
+    this.replayCrossMarkerPct = getReplayCrossMarkerPct(this.finishReplayClip);
+
+    // Apply initial pose & snap camera cleanly to start of broadcast sweep
+    const initialSample = mapReplayPlaybackTime(0, this.finishReplayClip);
+    this.replaySpeedFactor = initialSample.effectiveSpeedFactor;
+    this.replaySourceRaceTime = initialSample.sourceRaceTime;
+    this.applyReplayFrameToRacers(initialSample.sourceRaceTime);
+
+    const camPose = computeReplayCameraPose(
+      0,
+      this.racers[0],
+      this.finishReplayClip.finishZ,
+      this.finishReplayClip.finishY,
+    );
+    this.camera.position.set(camPose.posX, camPose.posY, camPose.posZ);
+    this.camera.fov = camPose.fov;
+    this.camera.updateProjectionMatrix();
+    this.camera.lookAt(camPose.lookX, camPose.lookY, camPose.lookZ);
+
+    this.setGameState('replay');
+    this.emitReplayHud();
+  }
+
+  private applyReplayFrameToRacers(sourceRaceTime: number): void {
+    if (!this.finishReplayClip) return;
+    const frame = sampleReplayFrame(this.finishReplayClip, sourceRaceTime);
+    for (let i = 0; i < this.racers.length && i < frame.racers.length; i++) {
+      const dst = this.racers[i];
+      const src = frame.racers[i];
+      dst.x = src.x;
+      dst.y = src.y;
+      dst.z = src.z;
+      dst.vx = src.vx;
+      dst.vz = src.vz;
+      dst.facingYaw = src.facingYaw;
+      dst.grounded = src.grounded;
+      dst.diveTimer = src.diveTimer;
+      dst.stunTimer = src.stunTimer;
+      dst.squashX = src.squashX;
+      dst.squashY = src.squashY;
+      dst.walkDistance = src.walkDistance;
+      dst.hitFlashTimer = 0;
+    }
+  }
+
+  private emitReplayHud(): void {
+    if (!this.finishReplayClip || !this.pendingGameOverSnapshot) return;
+    const duration = this.finishReplayClip.playbackDuration;
+    const elapsed = Math.min(duration, this.replayElapsed);
+    const snap: ReplayHudSnapshot = {
+      elapsedSeconds: elapsed,
+      durationSeconds: duration,
+      progressPct: Math.min(100, Math.round((elapsed / Math.max(0.1, duration)) * 100)),
+      crossMarkerPct: this.replayCrossMarkerPct,
+      speedFactor: this.replaySpeedFactor,
+      crossedFinish: this.replayCrossedFinish,
+      rank: this.pendingGameOverSnapshot.rank,
+      totalRacers: this.pendingGameOverSnapshot.totalRacers,
+      clearTime: this.pendingGameOverSnapshot.clearTime,
+      mode: this.course.mode,
+      grade: this.selectedGrade,
+      score: this.pendingGameOverSnapshot.score,
+    };
+    this.callbacks.onReplayUpdate?.(snap);
+  }
+
+  private finishReplayToGameOver(): void {
+    this.camera.fov = 56;
+    this.camera.updateProjectionMatrix();
+    const snapshot = this.pendingGameOverSnapshot;
+    this.setGameState('gameover');
+    if (snapshot) {
+      this.callbacks.onGameOver(snapshot);
+    }
+  }
+
+  private handleRunFinished(
+    outcome: 'victory' | 'timeout',
+    options: { skipReplay?: boolean; syntheticReplay?: boolean } = {},
+  ): void {
     const standings = computeRaceStandings(this.racers);
     const player = this.racers[0];
     const rank = standings.findIndex((r) => r.isPlayer) + 1;
@@ -1050,9 +1211,28 @@ export class ArhamGameEngine {
         correctCount: this.correctCount,
         totalGates: this.course.quizGates.length,
         subject: this.subjectFilter,
+        grade: this.selectedGrade,
       });
       saveLeaderboard(updatedLeaderboard.entries);
+
+      // Finalize 5-second slow-motion finish-line replay clip
+      const finishDeckY =
+        this.course.platforms.find((p) => p.kind === 'finish')?.y ?? 1.1;
+      this.finishReplayClip = options.syntheticReplay
+        ? createSyntheticFinishReplayClip(
+            this.course.finishZ,
+            finishDeckY,
+            this.elapsedTime,
+            this.racers,
+          )
+        : this.replayRecorder.finalizeFinishClip(
+            this.course.finishZ,
+            finishDeckY,
+            this.elapsedTime,
+            this.racers,
+          );
     } else {
+      this.finishReplayClip = null;
       this.sound.playTimeout();
     }
 
@@ -1090,8 +1270,11 @@ export class ArhamGameEngine {
       };
     });
 
+    const hasFinishReplay = outcome === 'victory' && this.finishReplayClip !== null;
+
     const snapshot: GameOverSnapshot = {
       outcome,
+      grade: this.selectedGrade,
       rank,
       totalRacers: this.racers.length,
       score: Math.round(this.score),
@@ -1110,11 +1293,18 @@ export class ArhamGameEngine {
       dailyChallenges: this.dailyChallenges.challenges.map((c) => ({ ...c })),
       dailyChallengesCompletedThisRun: [...this.runDailyCompletedIds],
       dailyBonusPointsThisRun: this.runDailyBonusPoints,
+      hasFinishReplay,
       review,
     };
 
-    this.setGameState('gameover');
-    this.callbacks.onGameOver(snapshot);
+    this.pendingGameOverSnapshot = snapshot;
+
+    if (hasFinishReplay && !options.skipReplay) {
+      this.startFinishReplay();
+    } else {
+      this.setGameState('gameover');
+      this.callbacks.onGameOver(snapshot);
+    }
   }
 
   private emitHud(): void {
@@ -1129,6 +1319,7 @@ export class ArhamGameEngine {
     const hud: HudSnapshot = {
       mode: this.course.mode,
       selectedMode: this.selectedMode,
+      grade: this.selectedGrade,
       rank,
       totalRacers: this.racers.length,
       score: Math.round(this.score),
@@ -1245,7 +1436,12 @@ export class ArhamGameEngine {
 
   private syncVisuals(dt: number): void {
     // 1. Dynamic Platforms (Moving Wooden Rulers & Ice Bridges)
-    const animTime = this.gameState === 'playing' ? this.elapsedTime : this.worldTime;
+    const animTime =
+      this.gameState === 'replay'
+        ? this.replaySourceRaceTime
+        : this.gameState === 'playing'
+          ? this.elapsedTime
+          : this.worldTime;
     for (const plat of this.course.platforms) {
       if (plat.moveAxis === 'x') {
         const mesh = this.platformMeshes.get(plat.id);
@@ -1428,6 +1624,32 @@ export class ArhamGameEngine {
       return;
     }
 
+    if (this.gameState === 'replay' && this.finishReplayClip) {
+      // Dramatic 5-second slow-motion broadcast sweep around Arham crossing the Finish Arch
+      const u = Math.min(
+        1,
+        this.replayElapsed / Math.max(0.1, this.finishReplayClip.playbackDuration),
+      );
+      const camPose = computeReplayCameraPose(
+        u,
+        this.racers[0],
+        this.finishReplayClip.finishZ,
+        this.finishReplayClip.finishY,
+      );
+      const damp = 1 - Math.exp(-8.5 * dt);
+      this.camera.position.x += (camPose.posX - this.camera.position.x) * damp;
+      this.camera.position.y += (camPose.posY - this.camera.position.y) * damp;
+      this.camera.position.z += (camPose.posZ - this.camera.position.z) * damp;
+
+      if (Math.abs(this.camera.fov - camPose.fov) > 0.04) {
+        this.camera.fov = THREE.MathUtils.damp(this.camera.fov, camPose.fov, 7.5, dt);
+        this.camera.updateProjectionMatrix();
+      }
+      _vec3A.set(camPose.lookX, camPose.lookY, camPose.lookZ);
+      this.camera.lookAt(_vec3A);
+      return;
+    }
+
     // Third-person Stumble Chase Camera with exponential damping, speed FOV kick & trauma shake
     const player = this.racers[0];
     const desiredX = player.x * 0.68;
@@ -1499,6 +1721,9 @@ export class ArhamGameEngine {
             stepRacerPhysics(this.racers[i], aiIn, this.course, dt, this.elapsedTime, events);
           }
 
+          // Capture rolling ~30Hz pose frame for the 5-second finish-line slow-motion replay
+          this.replayRecorder.capture(this.elapsedTime, this.racers);
+
           if (this.course.fallingTiles.length > 0) {
             const tileStep = stepFallingTiles(this.course.fallingTiles, dt);
             for (const fallen of tileStep.newlyFallenTiles) {
@@ -1529,10 +1754,47 @@ export class ArhamGameEngine {
         this.hudEmitAccum = 0;
         this.emitHud();
       }
+    } else if (this.gameState === 'replay' && this.finishReplayClip) {
+      this.replayElapsed += dt;
+      const sample = mapReplayPlaybackTime(this.replayElapsed, this.finishReplayClip);
+      this.replaySpeedFactor = sample.effectiveSpeedFactor;
+      this.replaySourceRaceTime = sample.sourceRaceTime;
+      const justCrossed = sample.crossedFinish && !this.replayCrossedFinish;
+      this.replayCrossedFinish = sample.crossedFinish;
+
+      this.applyReplayFrameToRacers(sample.sourceRaceTime);
+
+      // Fire celebratory slow-motion confetti burst at the exact finish-crossing climax
+      if (sample.crossedFinish && !this.replayConfettiFired) {
+        this.replayConfettiFired = true;
+        const p = this.racers[0];
+        this.particleVfx.emitQuizGateClear(p.x, p.y + 0.75, p.z, true);
+        this.particleVfx.emitSimpleBurst(
+          p.x,
+          p.y + 1.25,
+          p.z - 0.6,
+          24,
+          [0xfacc15, 0x38bdf8, 0xf43f5e, 0x22c55e, 0xffffff],
+          8.4,
+          'confetti',
+        );
+        this.sound.playQuizCorrect();
+      }
+
+      this.replayHudEmitAccum += dt;
+      if (justCrossed || this.replayHudEmitAccum >= 0.065) {
+        this.replayHudEmitAccum = 0;
+        this.emitReplayHud();
+      }
+
+      if (sample.finished) {
+        this.finishReplayToGameOver();
+      }
     }
 
-    this.particleVfx.update(dt);
-    this.syncVisuals(dt);
+    const visualDt = this.gameState === 'replay' ? dt * this.replaySpeedFactor : dt;
+    this.particleVfx.update(visualDt);
+    this.syncVisuals(visualDt);
     this.updateCamera(dt);
 
     this.renderer.render(this.scene, this.camera);
@@ -1584,6 +1846,13 @@ export class ArhamGameEngine {
       }
       if (e.code === 'Enter' || e.code === 'Space') {
         this.startGame();
+      }
+      return;
+    }
+
+    if (this.gameState === 'replay') {
+      if ((e.code === 'Space' || e.code === 'Enter' || e.code === 'Escape') && !e.repeat) {
+        this.skipReplay();
       }
       return;
     }

@@ -6,7 +6,7 @@ Engineering guidelines and architectural invariants for AI coding agents working
 
 ## 1. Project Overview
 
-**Arham's Adventure** is a client-side 3D *Stumble Guys*-style educational obstacle-course race game built with **React 19, TypeScript, Tailwind CSS v4, Three.js, and Vite 8**. Players race 5 AI classmates across five playable modes (`classic`, `tile_fall`, `ice_slide`, `laser_dash`, `honey_drop`) with **`random` ("Mode Acak")** as the default selection, while answering Indonesian Grade 5 Elementary School (Kelas 5 SD) quiz questions.
+**Arham's Adventure** is a client-side 3D *Stumble Guys*-style educational obstacle-course race game built with **React 19, TypeScript, Tailwind CSS v4, Three.js, and Vite 8**. Players race 5 AI classmates across five playable modes (`classic`, `tile_fall`, `ice_slide`, `laser_dash`, `honey_drop`) with **`random` ("Mode Acak")** as the default selection, while answering Indonesian Elementary School (SD Kelas 1–6, defaulting to Kelas 5) quiz questions.
 
 All 3D geometry, textures (`CanvasTexture`), particle systems (`InstancedMesh`), and audio/music (Web Audio API) are **100% procedural**—there are no external image, model, or audio asset fetches.
 
@@ -39,13 +39,13 @@ npx --yes tsx --test src/game/*.test.ts
 Keep simulation/domain logic decoupled from React UI and Three.js rendering:
 
 - **`src/game/*.ts` (Pure Logic Modules — zero React / DOM / Three.js dependencies)**:
-  - `physics.ts`, `gameModes.ts`, `tileFall.ts`, `courseData.ts`, `questions.ts`, `particlePresets.ts`, `musicTempo.ts`, `achievements.ts`, `leaderboard.ts`, `dailyChallenges.ts`, `touchControls.ts`, `spriteMood.ts`, `types.ts`.
+  - `physics.ts`, `gameModes.ts`, `tileFall.ts`, `courseData.ts`, `questions.ts`, `replay.ts`, `particlePresets.ts`, `musicTempo.ts`, `achievements.ts`, `leaderboard.ts`, `dailyChallenges.ts`, `touchControls.ts`, `spriteMood.ts`, `types.ts`.
   - Every new gameplay rule, math helper, state transition, or storage parser should live in a pure module with a sibling `*.test.ts` file tested via `node:test` + `node:assert/strict`.
 - **`src/game/ThreeEngine.ts` + `models.ts` + `textures.ts` + `particles.ts` + `audio.ts`**:
   - Owns the Three.js `WebGLRenderer`, scene graph, instanced meshes, animation loop, keyboard/virtual input buffers, and procedural Web Audio synthesizer.
   - Emits throttled `HudSnapshot` updates (~10Hz or on discrete score/quiz events) to React via callbacks.
 - **`src/components/*.tsx` (Thin Presentation Layer)**:
-  - `TitleOverlay.tsx`, `PlayingHud.tsx`, `TouchControls.tsx`, `StatusModals.tsx`, `AchievementBadges.tsx`, `TopScoresModal.tsx`, `DailyChallengesModal.tsx`, `ArhamSprite.tsx`.
+  - `TitleOverlay.tsx`, `PlayingHud.tsx`, `ReplayOverlay.tsx`, `TouchControls.tsx`, `StatusModals.tsx`, `AchievementBadges.tsx`, `TopScoresModal.tsx`, `DailyChallengesModal.tsx`, `ArhamSprite.tsx`.
   - Never run simulation ticks or `requestAnimationFrame` loops inside React components.
 
 ---
@@ -62,10 +62,10 @@ Keep simulation/domain logic decoupled from React UI and Three.js rendering:
 7. **No `backdrop-filter` Over WebGL**: Never apply `backdrop-blur` / `backdrop-filter` on HUD or modal layers over the live WebGL canvas; use solid or `rgba(...)` backgrounds instead.
 
 ### Game Shell, Accessibility & Controls
-1. **State Mirroring**: Always keep `document.body.dataset.state` synced to `'title' | 'playing' | 'paused' | 'gameover'`.
+1. **State Mirroring**: Always keep `document.body.dataset.state` synced to `'title' | 'playing' | 'paused' | 'replay' | 'gameover'`.
 2. **Start & Testability Hooks**:
    - Keep `data-start="true"` on the primary start CTA.
-   - Preserve URL query hooks: `?autostart=1`, `?mode=<random|classic|tile_fall|ice_slide|laser_dash|honey_drop>`, and `?preview_gameover=1`.
+   - Preserve URL query hooks: `?autostart=1`, `?grade=<1..6>`, `?mode=<random|classic|tile_fall|ice_slide|laser_dash|honey_drop>`, `?preview_replay=1`, and `?preview_gameover=1`.
    - Call `e.currentTarget.blur()` on clickable HUD/title buttons so pressing `Space` during gameplay jumps instead of re-clicking focused buttons.
 3. **Input Safety**: Always clear held keyboard/touch inputs on `window` `blur`, `visibilitychange` (hidden), pause, and restart. Never use `window.alert` or `window.open`.
 4. **Mobile Touch & Haptics**: Guard `navigator.vibrate()` calls through `triggerHapticFeedback()` in `src/game/touchControls.ts` so unsupported browsers (e.g., iOS Safari / desktop) fail silently without throwing.
@@ -90,4 +90,4 @@ All persistence modules must guard `localStorage` access with `try/catch` and sa
 1. Run unit tests: `npx --yes tsx --test src/game/*.test.ts` (all tests must pass).
 2. Run type-check and production build: `npm run lint && npm run build` (zero TypeScript or Vite errors).
 3. For any visual, 3D, layout, or interactive change: restart the dev server and verify both the affected flow and console output (0 runtime errors) in a headless browser before completing the task.
-4. Keep UI copy in natural, kid-friendly **Bahasa Indonesia** consistent with the Grade 5 SD theme.
+4. Keep UI copy in natural, kid-friendly **Bahasa Indonesia** consistent with the Indonesian Elementary School (SD Kelas 1–6) theme.

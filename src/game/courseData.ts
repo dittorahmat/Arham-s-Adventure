@@ -488,7 +488,7 @@ function createTileFallCourseLayout(questions: QuizQuestion[], seed: number): Co
 /**
  * Seluncur Es (Icy Heights / Super Slide):
  * Low-friction crystalline ice runways, boost slides, frosted snow bumpers,
- * sliding ice bridges, and 4 Grade 5 SD Quiz Gates where early drift aiming shines!
+ * sliding ice bridges, and 4 SD Quiz Gates where early drift aiming shines!
  */
 function createIceSlideCourseLayout(questions: QuizQuestion[]): CourseLayout {
   if (questions.length < 4) {
@@ -654,7 +654,7 @@ function createIceSlideCourseLayout(questions: QuizQuestion[]): CourseLayout {
 /**
  * Lari Laser (Laser Dash / Block Dash):
  * Cyber-neon sprint deck featuring rhythmic sweeping horizontal Laser Beams
- * that players and AI must leap cleanly over, paired with 4 Grade 5 SD Quiz Gates!
+ * that players and AI must leap cleanly over, paired with 4 SD Quiz Gates!
  */
 function createLaserDashCourseLayout(questions: QuizQuestion[]): CourseLayout {
   if (questions.length < 4) {

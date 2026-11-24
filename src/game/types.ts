@@ -4,13 +4,15 @@ export type SubjectFilter = 'semua' | 'matematika' | 'ipa' | 'ips' | 'bahasa';
 
 export type SubjectKey = Exclude<SubjectFilter, 'semua'>;
 
+export type GradeLevel = 1 | 2 | 3 | 4 | 5 | 6;
+
 export type PlayableGameMode = 'classic' | 'tile_fall' | 'ice_slide' | 'laser_dash' | 'honey_drop';
 
 export type GameMode = PlayableGameMode;
 
 export type GameModeSelection = 'random' | PlayableGameMode;
 
-export type GameState = 'title' | 'playing' | 'paused' | 'gameover';
+export type GameState = 'title' | 'playing' | 'paused' | 'replay' | 'gameover';
 
 export type AiPolicy = 'speedster' | 'cautious' | 'quizwhiz';
 
@@ -46,6 +48,7 @@ export interface FallingTileDef {
 
 export interface QuizQuestion {
   id: string;
+  grade: GradeLevel;
   subject: SubjectKey;
   topic: string;
   question: string;
@@ -247,6 +250,7 @@ export interface AchievementBadgeView {
 export interface HudSnapshot {
   mode: PlayableGameMode;
   selectedMode: GameModeSelection;
+  grade: GradeLevel;
   rank: number;
   totalRacers: number;
   score: number;
@@ -279,6 +283,7 @@ export interface AnsweredReviewItem {
 
 export interface GameOverSnapshot {
   outcome: 'victory' | 'timeout';
+  grade: GradeLevel;
   rank: number;
   totalRacers: number;
   score: number;
@@ -297,5 +302,6 @@ export interface GameOverSnapshot {
   dailyChallenges: DailyChallengeItem[];
   dailyChallengesCompletedThisRun: string[];
   dailyBonusPointsThisRun: number;
+  hasFinishReplay: boolean;
   review: AnsweredReviewItem[];
 }

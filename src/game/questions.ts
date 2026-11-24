@@ -1,4 +1,68 @@
-import { QuizQuestion, SubjectFilter, SubjectKey } from './types';
+import { GradeLevel, QuizQuestion, SubjectFilter, SubjectKey } from './types';
+
+export const GRADE_LEVELS: readonly GradeLevel[] = [1, 2, 3, 4, 5, 6] as const;
+
+export const DEFAULT_GRADE_LEVEL: GradeLevel = 5;
+
+export interface GradeMeta {
+  grade: GradeLevel;
+  label: string;
+  shortLabel: string;
+  fullLabel: string;
+  accentHex: string;
+  summary: string;
+}
+
+export const GRADE_META: Record<GradeLevel, GradeMeta> = {
+  1: {
+    grade: 1,
+    label: 'Kelas 1',
+    shortLabel: 'Kls 1',
+    fullLabel: 'Kelas 1 SD',
+    accentHex: '#16a34a',
+    summary: 'Hitung 1–20 · Pancaindra · Pancasila Dasar · Huruf & Kata',
+  },
+  2: {
+    grade: 2,
+    label: 'Kelas 2',
+    shortLabel: 'Kls 2',
+    fullLabel: 'Kelas 2 SD',
+    accentHex: '#0d9488',
+    summary: 'Perkalian Dasar · Wujud Benda · Hidup Rukun · Fabel',
+  },
+  3: {
+    grade: 3,
+    label: 'Kelas 3',
+    shortLabel: 'Kls 3',
+    fullLabel: 'Kelas 3 SD',
+    accentHex: '#0284c7',
+    summary: 'Keliling & Pecahan · Daur Hidup · Bhinneka · Kalimat Utama',
+  },
+  4: {
+    grade: 4,
+    label: 'Kelas 4',
+    shortLabel: 'Kls 4',
+    fullLabel: 'Kelas 4 SD',
+    accentHex: '#7c3aed',
+    summary: 'FPB/KPK & Sudut · Gaya & Fotosintesis · Nusantara · Puisi',
+  },
+  5: {
+    grade: 5,
+    label: 'Kelas 5',
+    shortLabel: 'Kls 5',
+    fullLabel: 'Kelas 5 SD',
+    accentHex: '#2563eb',
+    summary: 'Pecahan & Volume · Ekosistem & Kalor · Geografi · Pantun',
+  },
+  6: {
+    grade: 6,
+    label: 'Kelas 6',
+    shortLabel: 'Kls 6',
+    fullLabel: 'Kelas 6 SD',
+    accentHex: '#db2777',
+    summary: 'Lingkaran & Mean · Tata Surya & Listrik · ASEAN · Pidato',
+  },
+};
 
 export const SUBJECT_LABELS: Record<SubjectFilter, string> = {
   semua: 'Semua Mapel',
@@ -16,13 +80,850 @@ export const SUBJECT_COLORS: Record<SubjectKey, { bg: string; accent: string; la
 };
 
 /**
- * Kurikulum Kelas 5 SD (Matematika, IPA/IPAS, IPS & PPKn, Bahasa Indonesia).
+ * Bank soal Kurikulum SD Lengkap (Kelas 1 SD – Kelas 6 SD) untuk 4 kelompok mapel:
+ * Matematika, IPA/IPAS, IPS & PPKn, serta Bahasa Indonesia.
  * Setiap soal memiliki 3 pilihan jawaban singkat agar mudah dibaca pada gerbang 3D.
  */
-export const GRADE_5_QUESTIONS: readonly QuizQuestion[] = [
-  // ===================== MATEMATIKA =====================
+export const ALL_SD_QUESTIONS: readonly QuizQuestion[] = [
+  // =========================================================================
+  // KELAS 1 SD (20 Soal)
+  // =========================================================================
+  // Matematika Kelas 1
+  {
+    id: 'k1-mat-1',
+    grade: 1,
+    subject: 'matematika',
+    topic: 'Penjumlahan',
+    question: 'Hasil dari 7 + 5 adalah ...',
+    options: ['11', '12', '13'],
+    correctIndex: 1,
+    explanation: '7 ditambah 5 sama dengan 12.',
+  },
+  {
+    id: 'k1-mat-2',
+    grade: 1,
+    subject: 'matematika',
+    topic: 'Pengurangan',
+    question: 'Arham punya 15 kelereng, lalu diberikan 6 ke Budi. Sisanya adalah ...',
+    options: ['9', '8', '10'],
+    correctIndex: 0,
+    explanation: '15 dikurangi 6 sama dengan 9 kelereng.',
+  },
+  {
+    id: 'k1-mat-3',
+    grade: 1,
+    subject: 'matematika',
+    topic: 'Bangun Datar',
+    question: 'Bangun datar yang memiliki 3 sisi disebut ...',
+    options: ['Lingkaran', 'Persegi', 'Segitiga'],
+    correctIndex: 2,
+    explanation: 'Segitiga selalu memiliki 3 sisi dan 3 sudut.',
+  },
+  {
+    id: 'k1-mat-4',
+    grade: 1,
+    subject: 'matematika',
+    topic: 'Nilai Tempat',
+    question: 'Pada bilangan 18, angka 1 menempati nilai tempat ...',
+    options: ['Puluhan', 'Satuan', 'Ratusan'],
+    correctIndex: 0,
+    explanation: '18 terdiri dari 1 puluhan (10) dan 8 satuan.',
+  },
+  {
+    id: 'k1-mat-5',
+    grade: 1,
+    subject: 'matematika',
+    topic: 'Waktu',
+    question: 'Jumlah hari dalam satu minggu adalah ...',
+    options: ['5 hari', '7 hari', '10 hari'],
+    correctIndex: 1,
+    explanation: 'Satu minggu terdiri atas 7 hari: Senin sampai Minggu.',
+  },
+  // IPA Kelas 1
+  {
+    id: 'k1-ipa-1',
+    grade: 1,
+    subject: 'ipa',
+    topic: 'Pancaindra',
+    question: 'Bagian tubuh yang kita gunakan untuk mendengar suara adalah ...',
+    options: ['Hidung', 'Telinga', 'Mata'],
+    correctIndex: 1,
+    explanation: 'Telinga adalah indra pendengaran pada manusia.',
+  },
+  {
+    id: 'k1-ipa-2',
+    grade: 1,
+    subject: 'ipa',
+    topic: 'Pancaindra',
+    question: 'Indra pada tubuh manusia yang berfungsi untuk melihat adalah ...',
+    options: ['Mata', 'Lidah', 'Kulit'],
+    correctIndex: 0,
+    explanation: 'Mata digunakan untuk melihat benda dan warna di sekitar kita.',
+  },
+  {
+    id: 'k1-ipa-3',
+    grade: 1,
+    subject: 'ipa',
+    topic: 'Hewan',
+    question: 'Hewan yang hidup di air dan bernapas dengan insang adalah ...',
+    options: ['Kucing', 'Ayam', 'Ikan'],
+    correctIndex: 2,
+    explanation: 'Ikan hidup di air dan bernapas menggunakan insang.',
+  },
+  {
+    id: 'k1-ipa-4',
+    grade: 1,
+    subject: 'ipa',
+    topic: 'Benda Langit',
+    question: 'Benda langit yang tampak terang pada siang hari adalah ...',
+    options: ['Matahari', 'Bintang', 'Bulan'],
+    correctIndex: 0,
+    explanation: 'Matahari menerangi bumi pada waktu siang hari.',
+  },
+  {
+    id: 'k1-ipa-5',
+    grade: 1,
+    subject: 'ipa',
+    topic: 'Tumbuhan',
+    question: 'Bagian tumbuhan yang biasanya berwarna hijau adalah ...',
+    options: ['Akar', 'Daun', 'Biji'],
+    correctIndex: 1,
+    explanation: 'Daun umumnya berwarna hijau karena mengandung zat hijau daun.',
+  },
+  // IPS & PPKn Kelas 1
+  {
+    id: 'k1-ips-1',
+    grade: 1,
+    subject: 'ips',
+    topic: 'Bendera Negara',
+    question: 'Warna bendera negara Indonesia adalah ...',
+    options: ['Merah Putih', 'Biru Putih', 'Merah Kuning'],
+    correctIndex: 0,
+    explanation: 'Bendera Indonesia adalah Sang Saka Merah Putih.',
+  },
+  {
+    id: 'k1-ips-2',
+    grade: 1,
+    subject: 'ips',
+    topic: 'Lambang Negara',
+    question: 'Lambang negara Indonesia adalah burung ...',
+    options: ['Merpati', 'Garuda', 'Elang'],
+    correctIndex: 1,
+    explanation: 'Garuda Pancasila adalah lambang negara Indonesia.',
+  },
+  {
+    id: 'k1-ips-3',
+    grade: 1,
+    subject: 'ips',
+    topic: 'Pancasila',
+    question: 'Lambang sila pertama Pancasila "Ketuhanan Yang Maha Esa" adalah ...',
+    options: ['Bintang', 'Rantai', 'Padi Kapas'],
+    correctIndex: 0,
+    explanation: 'Sila ke-1 Pancasila dilambangkan oleh Bintang Emas.',
+  },
+  {
+    id: 'k1-ips-4',
+    grade: 1,
+    subject: 'ips',
+    topic: 'Aturan Sekolah',
+    question: 'Sebelum masuk ke ruang kelas, sebaiknya kita berbaris dengan ...',
+    options: ['Berlari', 'Rapi', 'Berisik'],
+    correctIndex: 1,
+    explanation: 'Berbaris rapi melatih kedisiplinan dan tertib di sekolah.',
+  },
+  {
+    id: 'k1-ips-5',
+    grade: 1,
+    subject: 'ips',
+    topic: 'Keluarga',
+    question: 'Orang tua dari ayah atau ibu kita disebut ...',
+    options: ['Paman', 'Sepupu', 'Kakek Nenek'],
+    correctIndex: 2,
+    explanation: 'Ayah dan ibu dari orang tua kita adalah kakek dan nenek.',
+  },
+  // Bahasa Indonesia Kelas 1
+  {
+    id: 'k1-bhs-1',
+    grade: 1,
+    subject: 'bahasa',
+    topic: 'Huruf Vokal',
+    question: 'Manakah yang termasuk huruf vokal (huruf hidup)?',
+    options: ['A, I, U, E, O', 'B, C, D, F, G', 'K, L, M, N, P'],
+    correctIndex: 0,
+    explanation: 'Huruf vokal dalam abjad Indonesia adalah a, i, u, e, dan o.',
+  },
+  {
+    id: 'k1-bhs-2',
+    grade: 1,
+    subject: 'bahasa',
+    topic: 'Suku Kata',
+    question: 'Kata "bu-ku" terdiri atas berapa suku kata?',
+    options: ['1 suku kata', '2 suku kata', '3 suku kata'],
+    correctIndex: 1,
+    explanation: 'Kata "buku" dipenggal menjadi 2 suku kata: bu - ku.',
+  },
+  {
+    id: 'k1-bhs-3',
+    grade: 1,
+    subject: 'bahasa',
+    topic: 'Lawan Kata',
+    question: 'Lawan kata dari "besar" adalah ...',
+    options: ['Tinggi', 'Kecil', 'Panjang'],
+    correctIndex: 1,
+    explanation: 'Lawan kata (antonim) dari besar adalah kecil.',
+  },
+  {
+    id: 'k1-bhs-4',
+    grade: 1,
+    subject: 'bahasa',
+    topic: 'Ungkapan Sopan',
+    question: 'Saat menerima hadiah dari teman, kita mengucapkan ...',
+    options: ['Terima kasih', 'Permisi', 'Sampai jumpa'],
+    correctIndex: 0,
+    explanation: 'Ucapkan terima kasih sebagai tanda syukur dan sopan santun.',
+  },
+  {
+    id: 'k1-bhs-5',
+    grade: 1,
+    subject: 'bahasa',
+    topic: 'Tanda Baca',
+    question: 'Kalimat berita diakhiri dengan tanda baca ...',
+    options: ['Tanda seru (!)', 'Tanda tanya (?)', 'Tanda titik (.)'],
+    correctIndex: 2,
+    explanation: 'Kalimat berita atau pernyataan selalu diakhiri tanda titik (.).',
+  },
+
+  // =========================================================================
+  // KELAS 2 SD (20 Soal)
+  // =========================================================================
+  // Matematika Kelas 2
+  {
+    id: 'k2-mat-1',
+    grade: 2,
+    subject: 'matematika',
+    topic: 'Perkalian Dasar',
+    question: 'Hasil dari 4 × 5 adalah ...',
+    options: ['15', '20', '25'],
+    correctIndex: 1,
+    explanation: '4 × 5 sama dengan 5 + 5 + 5 + 5 = 20.',
+  },
+  {
+    id: 'k2-mat-2',
+    grade: 2,
+    subject: 'matematika',
+    topic: 'Pembagian Dasar',
+    question: 'Ibu membagikan 18 kue sama rata kepada 3 anak. Tiap anak mendapat ...',
+    options: ['6 kue', '5 kue', '9 kue'],
+    correctIndex: 0,
+    explanation: '18 dibagi 3 sama dengan 6 kue untuk setiap anak.',
+  },
+  {
+    id: 'k2-mat-3',
+    grade: 2,
+    subject: 'matematika',
+    topic: 'Satuan Panjang',
+    question: 'Panjang 1 meter (m) sama dengan berapa sentimeter (cm)?',
+    options: ['10 cm', '100 cm', '1.000 cm'],
+    correctIndex: 1,
+    explanation: '1 meter setara dengan 100 sentimeter.',
+  },
+  {
+    id: 'k2-mat-4',
+    grade: 2,
+    subject: 'matematika',
+    topic: 'Penjumlahan',
+    question: 'Hasil dari 125 + 45 adalah ...',
+    options: ['160', '165', '170'],
+    correctIndex: 2,
+    explanation: '125 + 45 = 170.',
+  },
+  {
+    id: 'k2-mat-5',
+    grade: 2,
+    subject: 'matematika',
+    topic: 'Bangun Ruang',
+    question: 'Dadu mainan berbentuk bangun ruang ...',
+    options: ['Kubus', 'Bola', 'Kerucut'],
+    correctIndex: 0,
+    explanation: 'Dadu memiliki 6 sisi persegi sama besar sehingga berbentuk kubus.',
+  },
+  // IPA Kelas 2
+  {
+    id: 'k2-ipa-1',
+    grade: 2,
+    subject: 'ipa',
+    topic: 'Wujud Benda',
+    question: 'Air minum dan minyak goreng termasuk benda berwujud ...',
+    options: ['Padat', 'Cair', 'Gas'],
+    correctIndex: 1,
+    explanation: 'Benda cair bentuknya selalu mengikuti bentuk wadahnya.',
+  },
+  {
+    id: 'k2-ipa-2',
+    grade: 2,
+    subject: 'ipa',
+    topic: 'Wujud Benda',
+    question: 'Udara di dalam balon yang ditiup termasuk benda berwujud ...',
+    options: ['Gas', 'Padat', 'Cair'],
+    correctIndex: 0,
+    explanation: 'Udara merupakan benda gas yang mengisi seluruh ruang balon.',
+  },
+  {
+    id: 'k2-ipa-3',
+    grade: 2,
+    subject: 'ipa',
+    topic: 'Bagian Tumbuhan',
+    question: 'Bagian tumbuhan yang menyerap air dari dalam tanah adalah ...',
+    options: ['Bunga', 'Buah', 'Akar'],
+    correctIndex: 2,
+    explanation: 'Akar menyerap air dan zat hara dari tanah serta menguatkan tanaman.',
+  },
+  {
+    id: 'k2-ipa-4',
+    grade: 2,
+    subject: 'ipa',
+    topic: 'Makanan Hewan',
+    question: 'Kelinci dan kambing adalah hewan pemakan ...',
+    options: ['Tumbuhan', 'Daging', 'Ikan'],
+    correctIndex: 0,
+    explanation: 'Kelinci dan kambing memakan rumput serta dedaunan (tumbuhan).',
+  },
+  {
+    id: 'k2-ipa-5',
+    grade: 2,
+    subject: 'ipa',
+    topic: 'Lingkungan Sehat',
+    question: 'Agar lingkungan bersih, sampah sebaiknya dibuang ke ...',
+    options: ['Sungai', 'Tempat Sampah', 'Jalan'],
+    correctIndex: 1,
+    explanation: 'Membuang sampah pada tempatnya mencegah banjir dan penyakit.',
+  },
+  // IPS & PPKn Kelas 2
+  {
+    id: 'k2-ips-1',
+    grade: 2,
+    subject: 'ips',
+    topic: 'Pancasila',
+    question: 'Lambang sila kedua Pancasila "Kemanusiaan yang Adil dan Beradab" adalah ...',
+    options: ['Rantai Emas', 'Kepala Banteng', 'Pohon Beringin'],
+    correctIndex: 0,
+    explanation: 'Sila ke-2 Pancasila dilambangkan dengan Rantai Emas.',
+  },
+  {
+    id: 'k2-ips-2',
+    grade: 2,
+    subject: 'ips',
+    topic: 'Arah Mata Angin',
+    question: 'Matahari setiap pagi terbit dari arah ...',
+    options: ['Barat', 'Timur', 'Utara'],
+    correctIndex: 1,
+    explanation: 'Matahari terbit di sebelah timur dan terbenam di sebelah barat.',
+  },
+  {
+    id: 'k2-ips-3',
+    grade: 2,
+    subject: 'ips',
+    topic: 'Hidup Rukun',
+    question: 'Membersihkan kelas bersama-sama teman disebut ...',
+    options: ['Piket / Gotong Royong', 'Bertengkar', 'Berlomba'],
+    correctIndex: 0,
+    explanation: 'Gotong royong membuat pekerjaan berat terasa lebih ringan.',
+  },
+  {
+    id: 'k2-ips-4',
+    grade: 2,
+    subject: 'ips',
+    topic: 'Profesi',
+    question: 'Orang yang bertugas merawat dan mengobati pasien di rumah sakit adalah ...',
+    options: ['Nelayan', 'Pilot', 'Dokter'],
+    correctIndex: 2,
+    explanation: 'Dokter memeriksa dan membantu menyembuhkan orang yang sakit.',
+  },
+  {
+    id: 'k2-ips-5',
+    grade: 2,
+    subject: 'ips',
+    topic: 'Pancasila',
+    question: 'Lambang sila kelima Pancasila adalah Padi dan ...',
+    options: ['Bintang', 'Kapas', 'Beringin'],
+    correctIndex: 1,
+    explanation: 'Padi dan Kapas melambangkan kebutuhan pokok sandang dan pangan.',
+  },
+  // Bahasa Indonesia Kelas 2
+  {
+    id: 'k2-bhs-1',
+    grade: 2,
+    subject: 'bahasa',
+    topic: 'Huruf Kapital',
+    question: 'Huruf kapital (huruf besar) selalu digunakan pada awal kalimat dan nama ...',
+    options: ['Orang & Kota', 'Semua benda', 'Akhir kalimat'],
+    correctIndex: 0,
+    explanation: 'Nama orang, kota, hari, dan awal kalimat selalu diawali huruf kapital.',
+  },
+  {
+    id: 'k2-bhs-2',
+    grade: 2,
+    subject: 'bahasa',
+    topic: 'Dongeng Fabel',
+    question: 'Cerita dongeng yang tokoh-tokohnya adalah hewan disebut ...',
+    options: ['Pantun', 'Fabel', 'Berita'],
+    correctIndex: 1,
+    explanation: 'Fabel adalah dongeng dengan tokoh hewan seperti Kancil dan Buaya.',
+  },
+  {
+    id: 'k2-bhs-3',
+    grade: 2,
+    subject: 'bahasa',
+    topic: 'Kata Tanya',
+    question: 'Kata tanya yang digunakan untuk menanyakan tempat adalah ...',
+    options: ['Siapa', 'Kapan', 'Di mana'],
+    correctIndex: 2,
+    explanation: 'Kata tanya "Di mana" dipakai untuk menanyakan lokasi atau tempat.',
+  },
+  {
+    id: 'k2-bhs-4',
+    grade: 2,
+    subject: 'bahasa',
+    topic: 'Ungkapan Sopan',
+    question: 'Jika tidak sengaja menjatuhkan pensil teman, kita segera berkata ...',
+    options: ['Maaf', 'Hebat', 'Halo'],
+    correctIndex: 0,
+    explanation: 'Mengucapkan maaf saat berbuat salah menjaga kerukunan.',
+  },
+  {
+    id: 'k2-bhs-5',
+    grade: 2,
+    subject: 'bahasa',
+    topic: 'Persamaan Kata',
+    question: 'Kata yang artinya sama dengan "senang" adalah ...',
+    options: ['Sedih', 'Gembira', 'Marah'],
+    correctIndex: 1,
+    explanation: 'Gembira dan bahagia memiliki arti yang sama dengan senang.',
+  },
+
+  // =========================================================================
+  // KELAS 3 SD (20 Soal)
+  // =========================================================================
+  // Matematika Kelas 3
+  {
+    id: 'k3-mat-1',
+    grade: 3,
+    subject: 'matematika',
+    topic: 'Perkalian',
+    question: 'Hasil dari 7 × 8 adalah ...',
+    options: ['54', '56', '64'],
+    correctIndex: 1,
+    explanation: '7 dikali 8 sama dengan 56.',
+  },
+  {
+    id: 'k3-mat-2',
+    grade: 3,
+    subject: 'matematika',
+    topic: 'Keliling Persegi',
+    question: 'Keliling persegi dengan panjang sisi 9 cm adalah ...',
+    options: ['36 cm', '18 cm', '81 cm'],
+    correctIndex: 0,
+    explanation: 'Keliling persegi = 4 × sisi = 4 × 9 = 36 cm.',
+  },
+  {
+    id: 'k3-mat-3',
+    grade: 3,
+    subject: 'matematika',
+    topic: 'Satuan Waktu',
+    question: '2 jam sama dengan berapa menit?',
+    options: ['60 menit', '90 menit', '120 menit'],
+    correctIndex: 2,
+    explanation: '1 jam = 60 menit, sehingga 2 jam = 2 × 60 = 120 menit.',
+  },
+  {
+    id: 'k3-mat-4',
+    grade: 3,
+    subject: 'matematika',
+    topic: 'Pecahan Dasar',
+    question: 'Sebuah pizza dipotong menjadi 4 bagian sama besar. 1 potong nilainya ...',
+    options: ['1/4', '1/2', '4/1'],
+    correctIndex: 0,
+    explanation: 'Satu bagian dari 4 potongan sama besar ditulis pecahan 1/4.',
+  },
+  {
+    id: 'k3-mat-5',
+    grade: 3,
+    subject: 'matematika',
+    topic: 'Satuan Berat',
+    question: 'Berat 3 kilogram (kg) sama dengan berapa gram (g)?',
+    options: ['300 g', '3.000 g', '30 g'],
+    correctIndex: 1,
+    explanation: '1 kg = 1.000 gram, maka 3 kg = 3.000 gram.',
+  },
+  // IPA Kelas 3
+  {
+    id: 'k3-ipa-1',
+    grade: 3,
+    subject: 'ipa',
+    topic: 'Perubahan Wujud',
+    question: 'Es batu yang dibiarkan di tempat panas akan berubah menjadi air. Proses ini disebut ...',
+    options: ['Membeku', 'Mencair', 'Menyublim'],
+    correctIndex: 1,
+    explanation: 'Mencair adalah perubahan wujud benda padat menjadi cair karena panas.',
+  },
+  {
+    id: 'k3-ipa-2',
+    grade: 3,
+    subject: 'ipa',
+    topic: 'Daur Hidup',
+    question: 'Sebelum menjadi kupu-kupu dewasa, ulat berubah terlebih dahulu menjadi ...',
+    options: ['Kepompong', 'Berudu', 'Telur'],
+    correctIndex: 0,
+    explanation: 'Urutan daur hidup kupu-kupu: telur → ulat → kepompong → kupu-kupu.',
+  },
+  {
+    id: 'k3-ipa-3',
+    grade: 3,
+    subject: 'ipa',
+    topic: 'Energi',
+    question: 'Sumber energi panas dan cahaya terbesar bagi bumi adalah ...',
+    options: ['Baterai', 'Api unggun', 'Matahari'],
+    correctIndex: 2,
+    explanation: 'Matahari memancarkan energi panas dan cahaya untuk seluruh makhluk hidup.',
+  },
+  {
+    id: 'k3-ipa-4',
+    grade: 3,
+    subject: 'ipa',
+    topic: 'Musim Indonesia',
+    question: 'Indonesia yang beriklim tropis memiliki dua musim, yaitu musim hujan dan ...',
+    options: ['Kemarau', 'Salju', 'Gugur'],
+    correctIndex: 0,
+    explanation: 'Sebagai negara tropis, Indonesia mengalami musim hujan dan musim kemarau.',
+  },
+  {
+    id: 'k3-ipa-5',
+    grade: 3,
+    subject: 'ipa',
+    topic: 'Ciri Makhluk Hidup',
+    question: 'Kemampuan makhluk hidup menghasilkan keturunan agar tidak punah disebut ...',
+    options: ['Bernapas', 'Berkembang biak', 'Bergerak'],
+    correctIndex: 1,
+    explanation: 'Berkembang biak menjaga kelestarian jenis makhluk hidup.',
+  },
+  // IPS & PPKn Kelas 3
+  {
+    id: 'k3-ips-1',
+    grade: 3,
+    subject: 'ips',
+    topic: 'Semboyan Negara',
+    question: 'Arti semboyan "Bhinneka Tunggal Ika" adalah ...',
+    options: ['Berbeda tetap satu', 'Bersatu kita maju', 'Maju terus pantang'],
+    correctIndex: 0,
+    explanation: 'Bhinneka Tunggal Ika berarti berbeda-beda tetapi tetap satu jua.',
+  },
+  {
+    id: 'k3-ips-2',
+    grade: 3,
+    subject: 'ips',
+    topic: 'Sumpah Pemuda',
+    question: 'Hari Sumpah Pemuda diperingati setiap tanggal ...',
+    options: ['17 Agustus', '28 Oktober', '2 Mei'],
+    correctIndex: 1,
+    explanation: 'Sumpah Pemuda diikrarkan pada tanggal 28 Oktober 1928.',
+  },
+  {
+    id: 'k3-ips-3',
+    grade: 3,
+    subject: 'ips',
+    topic: 'Kewajiban Siswa',
+    question: 'Salah satu kewajiban siswa di sekolah adalah ...',
+    options: ['Mendapat nilai', 'Belajar tertib', 'Bermain seharian'],
+    correctIndex: 1,
+    explanation: 'Belajar dengan sungguh-sungguh dan menaati tata tertib adalah kewajiban siswa.',
+  },
+  {
+    id: 'k3-ips-4',
+    grade: 3,
+    subject: 'ips',
+    topic: 'Budaya Nusantara',
+    question: 'Rumah adat Tongkonan berasal dari provinsi ...',
+    options: ['Sulawesi Selatan', 'Bali', 'Papua'],
+    correctIndex: 0,
+    explanation: 'Rumah adat Tongkonan merupakan rumah tradisional suku Toraja di Sulawesi Selatan.',
+  },
+  {
+    id: 'k3-ips-5',
+    grade: 3,
+    subject: 'ips',
+    topic: 'Ekonomi Dasar',
+    question: 'Tempat bertemunya penjual dan pembeli untuk melakukan jual beli disebut ...',
+    options: ['Perpustakaan', 'Pelabuhan', 'Pasar'],
+    correctIndex: 2,
+    explanation: 'Pasar adalah tempat terjadinya transaksi jual beli barang dan jasa.',
+  },
+  // Bahasa Indonesia Kelas 3
+  {
+    id: 'k3-bhs-1',
+    grade: 3,
+    subject: 'bahasa',
+    topic: 'Unsur Cerita',
+    question: 'Pesan moral yang ingin disampaikan penulis dalam dongeng disebut ...',
+    options: ['Amanat', 'Latar', 'Judul'],
+    correctIndex: 0,
+    explanation: 'Amanat adalah nasihat atau pesan baik yang dipetik dari cerita.',
+  },
+  {
+    id: 'k3-bhs-2',
+    grade: 3,
+    subject: 'bahasa',
+    topic: 'Kata Baku',
+    question: 'Penulisan kata baku yang benar dalam bahasa Indonesia adalah ...',
+    options: ['Apotik', 'Apotek', 'Apoteek'],
+    correctIndex: 1,
+    explanation: 'Bentuk baku menurut KBBI adalah "apotek", bukan "apotik".',
+  },
+  {
+    id: 'k3-bhs-3',
+    grade: 3,
+    subject: 'bahasa',
+    topic: 'Kalimat Perintah',
+    question: 'Kalimat perintah seperti "Tutuplah pintu itu!" diakhiri dengan tanda ...',
+    options: ['Tanda titik (.)', 'Tanda tanya (?)', 'Tanda seru (!)'],
+    correctIndex: 2,
+    explanation: 'Kalimat perintah dan seruan selalu diakhiri tanda seru (!).',
+  },
+  {
+    id: 'k3-bhs-4',
+    grade: 3,
+    subject: 'bahasa',
+    topic: 'Antonim',
+    question: 'Antonim (lawan kata) dari kata "jauh" adalah ...',
+    options: ['Dekat', 'Tinggi', 'Cepat'],
+    correctIndex: 0,
+    explanation: 'Lawan kata jauh adalah dekat.',
+  },
+  {
+    id: 'k3-bhs-5',
+    grade: 3,
+    subject: 'bahasa',
+    topic: 'Wawancara',
+    question: 'Orang yang dimintai informasi saat wawancara disebut ...',
+    options: ['Pembaca', 'Narasumber', 'Penonton'],
+    correctIndex: 1,
+    explanation: 'Narasumber adalah tokoh yang menjawab pertanyaan pewawancara.',
+  },
+
+  // =========================================================================
+  // KELAS 4 SD (20 Soal)
+  // =========================================================================
+  // Matematika Kelas 4
+  {
+    id: 'k4-mat-1',
+    grade: 4,
+    subject: 'matematika',
+    topic: 'FPB & KPK',
+    question: 'Kelipatan Persekutuan Terkecil (KPK) dari 4 dan 6 adalah ...',
+    options: ['12', '24', '8'],
+    correctIndex: 0,
+    explanation: 'Kelipatan 4: 4, 8, 12... Kelipatan 6: 6, 12... Jadi KPK-nya adalah 12.',
+  },
+  {
+    id: 'k4-mat-2',
+    grade: 4,
+    subject: 'matematika',
+    topic: 'Sudut',
+    question: 'Besar sudut siku-siku adalah tepat ...',
+    options: ['45°', '90°', '180°'],
+    correctIndex: 1,
+    explanation: 'Sudut siku-siku besarnya selalu 90 derajat.',
+  },
+  {
+    id: 'k4-mat-3',
+    grade: 4,
+    subject: 'matematika',
+    topic: 'Luas Persegi Panjang',
+    question: 'Luas persegi panjang dengan panjang 12 cm dan lebar 5 cm adalah ...',
+    options: ['34 cm²', '50 cm²', '60 cm²'],
+    correctIndex: 2,
+    explanation: 'Luas persegi panjang = p × l = 12 × 5 = 60 cm².',
+  },
+  {
+    id: 'k4-mat-4',
+    grade: 4,
+    subject: 'matematika',
+    topic: 'Pecahan Senilai',
+    question: 'Pecahan yang senilai dengan 1/2 adalah ...',
+    options: ['3/6', '2/5', '3/8'],
+    correctIndex: 0,
+    explanation: 'Pembilang dan penyebut 1/2 dikali 3 menghasilkan 3/6.',
+  },
+  {
+    id: 'k4-mat-5',
+    grade: 4,
+    subject: 'matematika',
+    topic: 'FPB',
+    question: 'Faktor Persekutuan Terbesar (FPB) dari 12 dan 18 adalah ...',
+    options: ['3', '6', '9'],
+    correctIndex: 1,
+    explanation: 'Faktor persekutuan 12 dan 18 adalah 1, 2, 3, dan 6. Yang terbesar adalah 6.',
+  },
+  // IPA Kelas 4
+  {
+    id: 'k4-ipa-1',
+    grade: 4,
+    subject: 'ipa',
+    topic: 'Fotosintesis',
+    question: 'Proses tumbuhan hijau membuat makanan dengan bantuan cahaya matahari disebut ...',
+    options: ['Fotosintesis', 'Respirasi', 'Evaporasi'],
+    correctIndex: 0,
+    explanation: 'Fotosintesis mengubah air dan CO₂ menjadi glukosa serta oksigen di daun.',
+  },
+  {
+    id: 'k4-ipa-2',
+    grade: 4,
+    subject: 'ipa',
+    topic: 'Gaya',
+    question: 'Buah mangga yang matang selalu jatuh ke tanah karena adanya gaya ...',
+    options: ['Magnet', 'Gravitasi', 'Pegas'],
+    correctIndex: 1,
+    explanation: 'Gaya gravitasi bumi menarik semua benda menuju pusat bumi.',
+  },
+  {
+    id: 'k4-ipa-3',
+    grade: 4,
+    subject: 'ipa',
+    topic: 'Magnet',
+    question: 'Jika dua kutub magnet yang senama (Utara–Utara) didekatkan, keduanya akan ...',
+    options: ['Tarik-menarik', 'Diam saja', 'Tolak-menolak'],
+    correctIndex: 2,
+    explanation: 'Kutub magnet senama tolak-menolak; kutub berlawanan tarik-menarik.',
+  },
+  {
+    id: 'k4-ipa-4',
+    grade: 4,
+    subject: 'ipa',
+    topic: 'Energi Alternatif',
+    question: 'Contoh sumber energi alternatif yang ramah lingkungan dan dapat diperbarui adalah ...',
+    options: ['Angin & Surya', 'Batu Bara', 'Minyak Bumi'],
+    correctIndex: 0,
+    explanation: 'Energi angin dan sinar matahari tersedia melimpah serta dapat diperbarui.',
+  },
+  {
+    id: 'k4-ipa-5',
+    grade: 4,
+    subject: 'ipa',
+    topic: 'Bunyi',
+    question: 'Bunyi tidak dapat merambat melalui ruang ...',
+    options: ['Udara', 'Hampa Udara', 'Air'],
+    correctIndex: 1,
+    explanation: 'Bunyi memerlukan medium (padat, cair, atau gas) untuk merambat.',
+  },
+  // IPS & PPKn Kelas 4
+  {
+    id: 'k4-ips-1',
+    grade: 4,
+    subject: 'ips',
+    topic: 'Kerajaan Nusantara',
+    question: 'Patih terkenal dari Kerajaan Majapahit yang mengucapkan Sumpah Palapa adalah ...',
+    options: ['Gajah Mada', 'Pattimura', 'Diponegoro'],
+    correctIndex: 0,
+    explanation: 'Mahapatih Gajah Mada bertekad mempersatukan Nusantara lewat Sumpah Palapa.',
+  },
+  {
+    id: 'k4-ips-2',
+    grade: 4,
+    subject: 'ips',
+    topic: 'Sumber Daya Alam',
+    question: 'Hasil hutan, ikan laut, dan tanaman padi termasuk sumber daya alam ...',
+    options: ['Nonhayati', 'Hayati', 'Tambang'],
+    correctIndex: 1,
+    explanation: 'Sumber daya alam hayati berasal dari makhluk hidup (hewan dan tumbuhan).',
+  },
+  {
+    id: 'k4-ips-3',
+    grade: 4,
+    subject: 'ips',
+    topic: 'Tari Tradisional',
+    question: 'Tari Kecak yang terkenal di dunia berasal dari provinsi ...',
+    options: ['Jawa Tengah', 'Aceh', 'Bali'],
+    correctIndex: 2,
+    explanation: 'Tari Kecak adalah seni tari tradisional khas Pulau Bali.',
+  },
+  {
+    id: 'k4-ips-4',
+    grade: 4,
+    subject: 'ips',
+    topic: 'Peta',
+    question: 'Keterangan arti simbol-simbol yang terdapat pada peta disebut ...',
+    options: ['Legenda', 'Skala', 'Judul Peta'],
+    correctIndex: 0,
+    explanation: 'Legenda menjelaskan simbol gunung, sungai, ibu kota, dan jalan pada peta.',
+  },
+  {
+    id: 'k4-ips-5',
+    grade: 4,
+    subject: 'ips',
+    topic: 'Kerajaan Nusantara',
+    question: 'Kerajaan maritim Buddha terbesar di Sumatra pada abad ke-7 adalah ...',
+    options: ['Singasari', 'Sriwijaya', 'Mataram'],
+    correctIndex: 1,
+    explanation: 'Kerajaan Sriwijaya di Palembang terkenal sebagai pusat maritim dan pendidikan Buddha.',
+  },
+  // Bahasa Indonesia Kelas 4
+  {
+    id: 'k4-bhs-1',
+    grade: 4,
+    subject: 'bahasa',
+    topic: 'Puisi',
+    question: 'Kumpulan beberapa baris dalam sebuah puisi disebut ...',
+    options: ['Bait', 'Paragraf', 'Bab'],
+    correctIndex: 0,
+    explanation: 'Puisi tersusun atas larik (baris) yang bergabung membentuk bait.',
+  },
+  {
+    id: 'k4-bhs-2',
+    grade: 4,
+    subject: 'bahasa',
+    topic: 'Kata Dasar',
+    question: 'Kata dasar dari kata berimbuhan "menulis" adalah ...',
+    options: ['Nulis', 'Tulis', 'Tulisan'],
+    correctIndex: 1,
+    explanation: 'Huruf "t" pada kata dasar "tulis" luluh saat mendapat awalan me-.',
+  },
+  {
+    id: 'k4-bhs-3',
+    grade: 4,
+    subject: 'bahasa',
+    topic: 'Kamus',
+    question: 'Kamus resmi yang menjadi rujukan arti kata baku Indonesia adalah ...',
+    options: ['Atlas', 'Ensiklopedia', 'KBBI'],
+    correctIndex: 2,
+    explanation: 'KBBI adalah singkatan dari Kamus Besar Bahasa Indonesia.',
+  },
+  {
+    id: 'k4-bhs-4',
+    grade: 4,
+    subject: 'bahasa',
+    topic: 'Kalimat Transitif',
+    question: 'Pada kalimat "Arham membaca buku", kata "buku" berfungsi sebagai ...',
+    options: ['Objek (O)', 'Subjek (S)', 'Predikat (P)'],
+    correctIndex: 0,
+    explanation: 'Arham (Subjek) + membaca (Predikat) + buku (Objek).',
+  },
+  {
+    id: 'k4-bhs-5',
+    grade: 4,
+    subject: 'bahasa',
+    topic: 'Sinonim',
+    question: 'Sinonim dari kata "cerdas" adalah ...',
+    options: ['Lamban', 'Pintar', 'Lupa'],
+    correctIndex: 1,
+    explanation: 'Cerdas memiliki arti yang sama dengan pintar dan pandai.',
+  },
+
+  // =========================================================================
+  // KELAS 5 SD — DEFAULT (30 Soal)
+  // =========================================================================
+  // Matematika Kelas 5
   {
     id: 'mat-1',
+    grade: 5,
     subject: 'matematika',
     topic: 'Pecahan',
     question: 'Hasil dari 3/4 + 1/2 adalah ...',
@@ -32,6 +933,7 @@ export const GRADE_5_QUESTIONS: readonly QuizQuestion[] = [
   },
   {
     id: 'mat-2',
+    grade: 5,
     subject: 'matematika',
     topic: 'Volume Kubus',
     question: 'Volume kubus dengan panjang rusuk 6 cm adalah ...',
@@ -41,6 +943,7 @@ export const GRADE_5_QUESTIONS: readonly QuizQuestion[] = [
   },
   {
     id: 'mat-3',
+    grade: 5,
     subject: 'matematika',
     topic: 'Kecepatan & Jarak',
     question: 'Sepeda melaju 15 km/jam selama 3 jam. Jarak tempuhnya adalah ...',
@@ -50,6 +953,7 @@ export const GRADE_5_QUESTIONS: readonly QuizQuestion[] = [
   },
   {
     id: 'mat-4',
+    grade: 5,
     subject: 'matematika',
     topic: 'Volume Balok',
     question: 'Balok berukuran p = 8 cm, l = 5 cm, t = 4 cm. Volumenya adalah ...',
@@ -59,6 +963,7 @@ export const GRADE_5_QUESTIONS: readonly QuizQuestion[] = [
   },
   {
     id: 'mat-5',
+    grade: 5,
     subject: 'matematika',
     topic: 'Akar Pangkat Tiga',
     question: 'Hasil dari ∛125 (akar pangkat tiga dari 125) adalah ...',
@@ -68,6 +973,7 @@ export const GRADE_5_QUESTIONS: readonly QuizQuestion[] = [
   },
   {
     id: 'mat-6',
+    grade: 5,
     subject: 'matematika',
     topic: 'Skala Peta',
     question: 'Skala 1 : 200.000. Jika jarak di peta 4 cm, jarak sebenarnya adalah ...',
@@ -77,6 +983,7 @@ export const GRADE_5_QUESTIONS: readonly QuizQuestion[] = [
   },
   {
     id: 'mat-7',
+    grade: 5,
     subject: 'matematika',
     topic: 'Persen & Desimal',
     question: 'Bentuk persen dari pecahan 3/5 adalah ...',
@@ -86,6 +993,7 @@ export const GRADE_5_QUESTIONS: readonly QuizQuestion[] = [
   },
   {
     id: 'mat-8',
+    grade: 5,
     subject: 'matematika',
     topic: 'Operasi Hitung',
     question: 'Hasil dari 25 + 15 × 4 adalah ...',
@@ -93,10 +1001,10 @@ export const GRADE_5_QUESTIONS: readonly QuizQuestion[] = [
     correctIndex: 0,
     explanation: 'Kerjakan perkalian dulu: 15 × 4 = 60, lalu 25 + 60 = 85.',
   },
-
-  // ===================== IPA / IPAS ALAM =====================
+  // IPA Kelas 5
   {
     id: 'ipa-1',
+    grade: 5,
     subject: 'ipa',
     topic: 'Perpindahan Panas',
     question: 'Panas matahari sampai ke bumi merupakan perpindahan kalor secara ...',
@@ -106,6 +1014,7 @@ export const GRADE_5_QUESTIONS: readonly QuizQuestion[] = [
   },
   {
     id: 'ipa-2',
+    grade: 5,
     subject: 'ipa',
     topic: 'Sistem Pernapasan',
     question: 'Pertukaran oksigen dan karbon dioksida di paru-paru terjadi di ...',
@@ -115,6 +1024,7 @@ export const GRADE_5_QUESTIONS: readonly QuizQuestion[] = [
   },
   {
     id: 'ipa-3',
+    grade: 5,
     subject: 'ipa',
     topic: 'Siklus Air',
     question: 'Proses penguapan air laut oleh panas matahari disebut ...',
@@ -124,6 +1034,7 @@ export const GRADE_5_QUESTIONS: readonly QuizQuestion[] = [
   },
   {
     id: 'ipa-4',
+    grade: 5,
     subject: 'ipa',
     topic: 'Ekosistem',
     question: 'Dalam rantai makanan, tumbuhan hijau berperan sebagai ...',
@@ -133,6 +1044,7 @@ export const GRADE_5_QUESTIONS: readonly QuizQuestion[] = [
   },
   {
     id: 'ipa-5',
+    grade: 5,
     subject: 'ipa',
     topic: 'Sistem Pencernaan',
     question: 'Penyerapan sari-sari makanan pada tubuh manusia terjadi di ...',
@@ -142,6 +1054,7 @@ export const GRADE_5_QUESTIONS: readonly QuizQuestion[] = [
   },
   {
     id: 'ipa-6',
+    grade: 5,
     subject: 'ipa',
     topic: 'Peredaran Darah',
     question: 'Organ tubuh yang berfungsi memompa darah ke seluruh tubuh adalah ...',
@@ -151,6 +1064,7 @@ export const GRADE_5_QUESTIONS: readonly QuizQuestion[] = [
   },
   {
     id: 'ipa-7',
+    grade: 5,
     subject: 'ipa',
     topic: 'Sifat Cahaya',
     question: 'Pensil di dalam gelas berisi air tampak patah karena cahaya dapat ...',
@@ -160,6 +1074,7 @@ export const GRADE_5_QUESTIONS: readonly QuizQuestion[] = [
   },
   {
     id: 'ipa-8',
+    grade: 5,
     subject: 'ipa',
     topic: 'Organ Gerak Hewan',
     question: 'Hewan bertulang belakang seperti ikan, katak, dan burung disebut ...',
@@ -167,10 +1082,10 @@ export const GRADE_5_QUESTIONS: readonly QuizQuestion[] = [
     correctIndex: 1,
     explanation: 'Vertebrata adalah kelompok hewan yang memiliki tulang belakang.',
   },
-
-  // ===================== IPS & PPKN =====================
+  // IPS & PPKn Kelas 5
   {
     id: 'ips-1',
+    grade: 5,
     subject: 'ips',
     topic: 'Letak Geografis',
     question: 'Indonesia diapit dua samudra, yaitu Samudra Hindia dan ...',
@@ -180,6 +1095,7 @@ export const GRADE_5_QUESTIONS: readonly QuizQuestion[] = [
   },
   {
     id: 'ips-2',
+    grade: 5,
     subject: 'ips',
     topic: 'Pancasila',
     question: 'Lambang sila ke-3 Pancasila "Persatuan Indonesia" adalah ...',
@@ -189,6 +1105,7 @@ export const GRADE_5_QUESTIONS: readonly QuizQuestion[] = [
   },
   {
     id: 'ips-3',
+    grade: 5,
     subject: 'ips',
     topic: 'Sejarah Kemerdekaan',
     question: 'Teks Proklamasi Kemerdekaan Indonesia dibacakan pada tanggal ...',
@@ -198,6 +1115,7 @@ export const GRADE_5_QUESTIONS: readonly QuizQuestion[] = [
   },
   {
     id: 'ips-4',
+    grade: 5,
     subject: 'ips',
     topic: 'Kegiatan Ekonomi',
     question: 'Kegiatan menyalurkan barang dari produsen ke konsumen disebut ...',
@@ -207,6 +1125,7 @@ export const GRADE_5_QUESTIONS: readonly QuizQuestion[] = [
   },
   {
     id: 'ips-5',
+    grade: 5,
     subject: 'ips',
     topic: 'Kenampakan Alam',
     question: 'Indonesia disebut negara maritim karena sebagian besar wilayahnya berupa ...',
@@ -216,6 +1135,7 @@ export const GRADE_5_QUESTIONS: readonly QuizQuestion[] = [
   },
   {
     id: 'ips-6',
+    grade: 5,
     subject: 'ips',
     topic: 'Pahlawan Nasional',
     question: 'Bapak Pendidikan Nasional Indonesia adalah ...',
@@ -225,6 +1145,7 @@ export const GRADE_5_QUESTIONS: readonly QuizQuestion[] = [
   },
   {
     id: 'ips-7',
+    grade: 5,
     subject: 'ips',
     topic: 'Pancasila',
     question: 'Musyawarah untuk mufakat merupakan pengamalan Pancasila sila ke- ...',
@@ -232,10 +1153,10 @@ export const GRADE_5_QUESTIONS: readonly QuizQuestion[] = [
     correctIndex: 1,
     explanation: 'Sila ke-4 menekankan kerakyatan dan permusyawaratan/perwakilan.',
   },
-
-  // ===================== BAHASA INDONESIA =====================
+  // Bahasa Indonesia Kelas 5
   {
     id: 'bhs-1',
+    grade: 5,
     subject: 'bahasa',
     topic: 'Pantun',
     question: 'Baris ke-1 dan ke-2 dalam sebuah pantun disebut ...',
@@ -245,6 +1166,7 @@ export const GRADE_5_QUESTIONS: readonly QuizQuestion[] = [
   },
   {
     id: 'bhs-2',
+    grade: 5,
     subject: 'bahasa',
     topic: 'Sinonim',
     question: 'Sinonim (persamaan kata) dari kata "rajin" adalah ...',
@@ -254,6 +1176,7 @@ export const GRADE_5_QUESTIONS: readonly QuizQuestion[] = [
   },
   {
     id: 'bhs-3',
+    grade: 5,
     subject: 'bahasa',
     topic: 'Antonim',
     question: 'Antonim (lawan kata) dari kata "hemat" adalah ...',
@@ -263,6 +1186,7 @@ export const GRADE_5_QUESTIONS: readonly QuizQuestion[] = [
   },
   {
     id: 'bhs-4',
+    grade: 5,
     subject: 'bahasa',
     topic: 'Paragraf',
     question: 'Gagasan utama yang menjadi dasar pengembangan paragraf disebut ...',
@@ -272,6 +1196,7 @@ export const GRADE_5_QUESTIONS: readonly QuizQuestion[] = [
   },
   {
     id: 'bhs-5',
+    grade: 5,
     subject: 'bahasa',
     topic: 'Pantun',
     question: 'Pola rima (sajak) yang benar pada pantun adalah ...',
@@ -281,6 +1206,7 @@ export const GRADE_5_QUESTIONS: readonly QuizQuestion[] = [
   },
   {
     id: 'bhs-6',
+    grade: 5,
     subject: 'bahasa',
     topic: 'Kata Tanya',
     question: 'Kata tanya untuk menanyakan alasan atau sebab suatu peristiwa adalah ...',
@@ -290,6 +1216,7 @@ export const GRADE_5_QUESTIONS: readonly QuizQuestion[] = [
   },
   {
     id: 'bhs-7',
+    grade: 5,
     subject: 'bahasa',
     topic: 'Imbuhan',
     question: 'Kata dasar "sapu" jika mendapat awalan me- menjadi ...',
@@ -297,7 +1224,242 @@ export const GRADE_5_QUESTIONS: readonly QuizQuestion[] = [
     correctIndex: 1,
     explanation: 'Huruf "s" pada kata dasar luluh saat bertemu awalan me- menjadi menyapu.',
   },
+
+  // =========================================================================
+  // KELAS 6 SD (20 Soal)
+  // =========================================================================
+  // Matematika Kelas 6
+  {
+    id: 'k6-mat-1',
+    grade: 6,
+    subject: 'matematika',
+    topic: 'Bilangan Bulat',
+    question: 'Hasil dari (-12) + 20 adalah ...',
+    options: ['-8', '8', '32'],
+    correctIndex: 1,
+    explanation: 'Utang 12 dibayar 20 menyisakan +8.',
+  },
+  {
+    id: 'k6-mat-2',
+    grade: 6,
+    subject: 'matematika',
+    topic: 'Keliling Lingkaran',
+    question: 'Keliling lingkaran dengan jari-jari 7 cm (π = 22/7) adalah ...',
+    options: ['44 cm', '22 cm', '154 cm'],
+    correctIndex: 0,
+    explanation: 'Keliling = 2 × π × r = 2 × (22/7) × 7 = 44 cm.',
+  },
+  {
+    id: 'k6-mat-3',
+    grade: 6,
+    subject: 'matematika',
+    topic: 'Luas Lingkaran',
+    question: 'Luas lingkaran dengan jari-jari 7 cm (π = 22/7) adalah ...',
+    options: ['44 cm²', '144 cm²', '154 cm²'],
+    correctIndex: 2,
+    explanation: 'Luas = π × r × r = (22/7) × 7 × 7 = 154 cm².',
+  },
+  {
+    id: 'k6-mat-4',
+    grade: 6,
+    subject: 'matematika',
+    topic: 'Rata-rata (Mean)',
+    question: 'Nilai ulangan Arham: 80, 90, 85, dan 105. Rata-ratanya adalah ...',
+    options: ['90', '85', '95'],
+    correctIndex: 0,
+    explanation: 'Jumlah = 80 + 90 + 85 + 105 = 360. Rata-rata = 360 / 4 = 90.',
+  },
+  {
+    id: 'k6-mat-5',
+    grade: 6,
+    subject: 'matematika',
+    topic: 'Volume Tabung',
+    question: 'Tabung berluas alas 50 cm² dan tinggi 10 cm memiliki volume ...',
+    options: ['60 cm³', '500 cm³', '250 cm³'],
+    correctIndex: 1,
+    explanation: 'Volume tabung = Luas alas × tinggi = 50 × 10 = 500 cm³.',
+  },
+  // IPA Kelas 6
+  {
+    id: 'k6-ipa-1',
+    grade: 6,
+    subject: 'ipa',
+    topic: 'Tata Surya',
+    question: 'Planet terbesar dalam sistem tata surya kita adalah ...',
+    options: ['Saturnus', 'Jupiter', 'Neptunus'],
+    correctIndex: 1,
+    explanation: 'Jupiter adalah planet terbesar dengan diameter lebih dari 11 kali bumi.',
+  },
+  {
+    id: 'k6-ipa-2',
+    grade: 6,
+    subject: 'ipa',
+    topic: 'Gerhana',
+    question: 'Gerhana matahari terjadi ketika posisi bulan berada di antara matahari dan ...',
+    options: ['Bumi', 'Mars', 'Venus'],
+    correctIndex: 0,
+    explanation: 'Saat bulan menghalangi cahaya matahari menuju bumi, terjadilah gerhana matahari.',
+  },
+  {
+    id: 'k6-ipa-3',
+    grade: 6,
+    subject: 'ipa',
+    topic: 'Listrik',
+    question: 'Rangkaian listrik rumah yang membuat lampu tetap menyala jika satu lampu mati adalah rangkaian ...',
+    options: ['Seri', 'Terbuka', 'Paralel'],
+    correctIndex: 2,
+    explanation: 'Pada rangkaian paralel, setiap cabang memiliki jalur arus listrik sendiri.',
+  },
+  {
+    id: 'k6-ipa-4',
+    grade: 6,
+    subject: 'ipa',
+    topic: 'Adaptasi Hewan',
+    question: 'Kemampuan bunglon mengubah warna kulit sesuai lingkungan disebut ...',
+    options: ['Mimikri', 'Autotomi', 'Hibernasi'],
+    correctIndex: 0,
+    explanation: 'Mimikri membantu bunglon menyamar dari pemangsa maupun mangsanya.',
+  },
+  {
+    id: 'k6-ipa-5',
+    grade: 6,
+    subject: 'ipa',
+    topic: 'Perkembangbiakan',
+    question: 'Tumbuhan pisang dan bambu berkembang biak secara vegetatif alami dengan ...',
+    options: ['Umbi lapis', 'Tunas', 'Geragih'],
+    correctIndex: 1,
+    explanation: 'Pisang dan bambu menumbuhkan tunas baru di sekitar induknya.',
+  },
+  // IPS & PPKn Kelas 6
+  {
+    id: 'k6-ips-1',
+    grade: 6,
+    subject: 'ips',
+    topic: 'ASEAN',
+    question: 'Organisasi kerja sama negara-negara di kawasan Asia Tenggara disebut ...',
+    options: ['ASEAN', 'PBB', 'OPEC'],
+    correctIndex: 0,
+    explanation: 'ASEAN didirikan pada 8 Agustus 1967 di Bangkok, termasuk oleh Indonesia.',
+  },
+  {
+    id: 'k6-ips-2',
+    grade: 6,
+    subject: 'ips',
+    topic: 'Sejarah Proklamasi',
+    question: 'Tokoh yang mengetik naskah Proklamasi Kemerdekaan Indonesia adalah ...',
+    options: ['Ahmad Subardjo', 'Sayuti Melik', 'Moh. Yamin'],
+    correctIndex: 1,
+    explanation: 'Sayuti Melik mengetik naskah Proklamasi yang telah dirumuskan Soekarno-Hatta.',
+  },
+  {
+    id: 'k6-ips-3',
+    grade: 6,
+    subject: 'ips',
+    topic: 'ASEAN',
+    question: 'Negara anggota ASEAN yang dijuluki Negeri Gajah Putih adalah ...',
+    options: ['Malaysia', 'Vietnam', 'Thailand'],
+    correctIndex: 2,
+    explanation: 'Thailand dikenal sebagai Negeri Gajah Putih dan salah satu pendiri ASEAN.',
+  },
+  {
+    id: 'k6-ips-4',
+    grade: 6,
+    subject: 'ips',
+    topic: 'Globalisasi',
+    question: 'Sikap bijak menghadapi arus globalisasi dalam bidang ekonomi adalah ...',
+    options: ['Cinta produk lokal', 'Menolak teknologi', 'Lupa budaya'],
+    correctIndex: 0,
+    explanation: 'Mencintai produk dalam negeri memperkuat ekonomi dan UMKM Indonesia.',
+  },
+  {
+    id: 'k6-ips-5',
+    grade: 6,
+    subject: 'ips',
+    topic: 'Sejarah Pancasila',
+    question: 'Hari Lahir Pancasila diperingati setiap tanggal ...',
+    options: ['17 Agustus', '1 Juni', '20 Mei'],
+    correctIndex: 1,
+    explanation: 'Pidato Ir. Soekarno tentang dasar negara Pancasila disampaikan pada 1 Juni 1945.',
+  },
+  // Bahasa Indonesia Kelas 6
+  {
+    id: 'k6-bhs-1',
+    grade: 6,
+    subject: 'bahasa',
+    topic: 'Pidato',
+    question: 'Orang yang ahli menyampaikan pidato di depan umum disebut ...',
+    options: ['Orator', 'Moderator', 'Editor'],
+    correctIndex: 0,
+    explanation: 'Orator adalah pembicara ulung yang mahir berpidato.',
+  },
+  {
+    id: 'k6-bhs-2',
+    grade: 6,
+    subject: 'bahasa',
+    topic: 'Teks Eksplanasi',
+    question: 'Teks yang menjelaskan proses terjadinya fenomena alam atau sosial disebut teks ...',
+    options: ['Narasi', 'Eksplanasi', 'Prosedur'],
+    correctIndex: 1,
+    explanation: 'Teks eksplanasi menguraikan sebab-akibat terjadinya suatu peristiwa.',
+  },
+  {
+    id: 'k6-bhs-3',
+    grade: 6,
+    subject: 'bahasa',
+    topic: 'Formulir',
+    question: 'Lembar isian resmi untuk mendaftar sekolah atau lomba disebut ...',
+    options: ['Poster', 'Brosur', 'Formulir'],
+    correctIndex: 2,
+    explanation: 'Formulir berisi kolom data diri yang diisi secara jelas dan benar.',
+  },
+  {
+    id: 'k6-bhs-4',
+    grade: 6,
+    subject: 'bahasa',
+    topic: 'Kalimat Majemuk',
+    question: 'Kata penghubung "tetapi" digunakan dalam kalimat majemuk yang menyatakan ...',
+    options: ['Pertentangan', 'Pilihan', 'Urutan waktu'],
+    correctIndex: 0,
+    explanation: 'Konjungsi "tetapi" atau "namun" menghubungkan dua gagasan yang bertentangan.',
+  },
+  {
+    id: 'k6-bhs-5',
+    grade: 6,
+    subject: 'bahasa',
+    topic: 'Simpulan',
+    question: 'Pernyataan singkat yang merangkum keseluruhan isi bacaan disebut ...',
+    options: ['Daftar isi', 'Simpulan', 'Catatan kaki'],
+    correctIndex: 1,
+    explanation: 'Simpulan menyajikan inti terpenting dari keseluruhan teks bacaan.',
+  },
 ];
+
+export const GRADE_5_QUESTIONS: readonly QuizQuestion[] = ALL_SD_QUESTIONS.filter(
+  (q) => q.grade === 5,
+);
+
+export function getQuestionsByGrade(grade: GradeLevel): QuizQuestion[] {
+  return ALL_SD_QUESTIONS.filter((q) => q.grade === grade);
+}
+
+/**
+ * Parses a URL `?grade=` parameter into a valid GradeLevel (1..6), or null if absent/invalid.
+ */
+export function parseGradeParam(param: string | null | undefined): GradeLevel | null {
+  if (!param) return null;
+  const parsed = Number(param.trim());
+  if (
+    parsed === 1 ||
+    parsed === 2 ||
+    parsed === 3 ||
+    parsed === 4 ||
+    parsed === 5 ||
+    parsed === 6
+  ) {
+    return parsed;
+  }
+  return null;
+}
 
 function createSeededRng(seed: number): () => number {
   let state = seed >>> 0;
@@ -311,7 +1473,9 @@ export function selectRaceQuestions(
   subject: SubjectFilter,
   count: number,
   seed?: number,
+  grade: GradeLevel = DEFAULT_GRADE_LEVEL,
 ): QuizQuestion[] {
+  const gradePool = getQuestionsByGrade(grade);
   const rng = seed !== undefined ? createSeededRng(seed) : Math.random;
   const shuffle = <T,>(items: readonly T[]): T[] => {
     const arr = [...items];
@@ -323,7 +1487,7 @@ export function selectRaceQuestions(
   };
 
   if (subject !== 'semua') {
-    const filtered = shuffle(GRADE_5_QUESTIONS.filter((q) => q.subject === subject));
+    const filtered = shuffle(gradePool.filter((q) => q.subject === subject));
     const chosen: QuizQuestion[] = [];
     for (let i = 0; i < count; i++) {
       chosen.push(filtered[i % filtered.length]);
@@ -331,13 +1495,13 @@ export function selectRaceQuestions(
     return chosen;
   }
 
-  // Balanced mix across all 4 Grade 5 SD subjects when "semua" is selected
+  // Balanced mix across all 4 SD subjects for the selected grade when "semua" is selected
   const subjects: SubjectKey[] = shuffle(['matematika', 'ipa', 'ips', 'bahasa']);
   const pools: Record<SubjectKey, QuizQuestion[]> = {
-    matematika: shuffle(GRADE_5_QUESTIONS.filter((q) => q.subject === 'matematika')),
-    ipa: shuffle(GRADE_5_QUESTIONS.filter((q) => q.subject === 'ipa')),
-    ips: shuffle(GRADE_5_QUESTIONS.filter((q) => q.subject === 'ips')),
-    bahasa: shuffle(GRADE_5_QUESTIONS.filter((q) => q.subject === 'bahasa')),
+    matematika: shuffle(gradePool.filter((q) => q.subject === 'matematika')),
+    ipa: shuffle(gradePool.filter((q) => q.subject === 'ipa')),
+    ips: shuffle(gradePool.filter((q) => q.subject === 'ips')),
+    bahasa: shuffle(gradePool.filter((q) => q.subject === 'bahasa')),
   };
 
   const result: QuizQuestion[] = [];

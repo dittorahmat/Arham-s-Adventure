@@ -153,6 +153,7 @@ export const TopScoresModal: React.FC<TopScoresModalProps> = ({ entries, onClose
                           </span>
                         </div>
                         <p className="truncate text-[11px] font-semibold text-[#475569]">
+                          {entry.grade ? `Kelas ${entry.grade} SD · ` : ''}
                           {SUBJECT_LABELS[entry.subject]} · Kuis {entry.correctCount}/{entry.totalGates}
                         </p>
                       </div>

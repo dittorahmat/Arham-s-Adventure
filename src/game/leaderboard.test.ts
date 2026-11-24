@@ -128,3 +128,44 @@ test('formatLapTime formats seconds and minute-plus lap times clearly', () => {
   assert.equal(formatLapTime(65.4), '1m 05.4d');
   assert.equal(formatLapTime(124.0), '2m 04.0d');
 });
+
+test('leaderboard persists valid SD grades (1-6) and safely ignores invalid grades', () => {
+  const store = createMemoryStorage();
+  const res = recordFastestLap([], {
+    lapTimeSeconds: 36.5,
+    score: 1400,
+    rank: 1,
+    correctCount: 5,
+    totalGates: 5,
+    subject: 'matematika',
+    grade: 3,
+    achievedAt: '2026-11-23T10:00:00.000Z',
+  });
+  assert.equal(res.entries[0].grade, 3);
+  saveLeaderboard(res.entries, store);
+
+  const loaded = loadLeaderboard(store);
+  assert.equal(loaded.length, 1);
+  assert.equal(loaded[0].grade, 3);
+
+  // Stored entry with out-of-range grade should load without crashing and omit grade
+  store.setItem(
+    LEADERBOARD_STORAGE_KEY,
+    JSON.stringify([
+      {
+        id: 'legacy-1',
+        lapTimeSeconds: 40.0,
+        score: 1200,
+        rank: 1,
+        correctCount: 4,
+        totalGates: 4,
+        subject: 'ipa',
+        grade: 99,
+        achievedAt: '2026-11-23T10:05:00.000Z',
+      },
+    ]),
+  );
+  const sanitized = loadLeaderboard(store);
+  assert.equal(sanitized.length, 1);
+  assert.equal(sanitized[0].grade, undefined);
+});

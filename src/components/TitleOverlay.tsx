@@ -6,13 +6,15 @@ import {
   LeaderboardEntry,
   loadLeaderboard,
 } from '../game/leaderboard';
-import { SUBJECT_LABELS } from '../game/questions';
-import { GameModeSelection, PlayableGameMode, SubjectFilter } from '../game/types';
+import { GRADE_LEVELS, GRADE_META, SUBJECT_LABELS } from '../game/questions';
+import { GameModeSelection, GradeLevel, PlayableGameMode, SubjectFilter } from '../game/types';
 import { ArhamSprite } from './ArhamSprite';
 import { DailyChallengesModal } from './DailyChallengesModal';
 import { TopScoresModal } from './TopScoresModal';
 
 interface TitleOverlayProps {
+  selectedGrade: GradeLevel;
+  onSelectGrade: (grade: GradeLevel) => void;
   selectedMode: GameModeSelection;
   previewMode: PlayableGameMode;
   onSelectMode: (mode: GameModeSelection) => void;
@@ -82,6 +84,8 @@ const ModeIcon: React.FC<{ mode: GameModeSelection }> = ({ mode }) => {
 };
 
 export const TitleOverlay: React.FC<TitleOverlayProps> = ({
+  selectedGrade,
+  onSelectGrade,
   selectedMode,
   previewMode,
   onSelectMode,
@@ -115,17 +119,18 @@ export const TitleOverlay: React.FC<TitleOverlayProps> = ({
   const dailyTotalCount = dailyChallenges.challenges.length;
   const selectedMeta = GAME_MODE_CATALOG[selectedMode];
   const previewMeta = GAME_MODE_CATALOG[previewMode];
+  const gradeMeta = GRADE_META[selectedGrade];
 
   return (
-    <div className="pointer-events-none fixed inset-0 z-20 flex flex-col justify-between p-4 sm:p-7 lg:p-10">
+    <div className="pointer-events-none fixed inset-0 z-20 flex flex-col justify-between p-3.5 sm:p-6 lg:p-8">
       {/* Main Left-Third Negative-Space Lockup & Controls */}
-      <div className="my-auto flex max-w-xl flex-col items-start gap-4 sm:gap-5">
+      <div className="my-auto flex max-w-xl flex-col items-start gap-3 sm:gap-4">
         {/* Bespoke Inline SVG Title Emblem Lockup */}
-        <div className="w-full max-w-[380px] sm:max-w-[420px]">
+        <div className="w-full max-w-[330px] sm:max-w-[390px]">
           <svg
             viewBox="0 0 460 190"
             role="img"
-            aria-label="Arham's Adventure — Balap Kuis Kelas 5 SD"
+            aria-label="Arham's Adventure — Balap Kuis SD Kelas 1–6"
             className="h-auto w-full drop-shadow-[0_10px_18px_rgba(15,23,42,0.28)]"
           >
             {/* Crest Ribbon Backing */}
@@ -198,15 +203,65 @@ export const TitleOverlay: React.FC<TitleOverlayProps> = ({
             </text>
           </svg>
 
-          <p className="mt-1 pl-2 font-display text-sm font-semibold text-white hud-stroke-sm sm:text-base">
-            Balap Halang Rintang · Pelajaran Kelas 5 SD
+          <p className="mt-0.5 pl-2 font-display text-sm font-semibold text-white hud-stroke-sm sm:text-base">
+            Balap Halang Rintang · Kuis SD Kelas 1–6
           </p>
         </div>
 
-        {/* Game Mode + Subject Filter Compact Toy Setup Panel */}
+        {/* Grade + Game Mode + Subject Filter Compact Toy Setup Panel */}
         <div className="pointer-events-auto w-full max-w-xl space-y-2.5 rounded-2xl border-[3px] border-[#1e293b] bg-[#fffdf5]/95 p-3 toy-panel">
-          {/* 6-Mode Selector: Mode Acak (Default) + 5 Playable Arenas */}
+          {/* Mandatory SD Grade Selector (Kelas 1 - Kelas 6, default Kelas 5) */}
           <div>
+            <div className="mb-1.5 flex flex-wrap items-center justify-between gap-x-2 gap-y-0.5 text-xs font-bold text-[#334155]">
+              <span>Pilih Kelas SD (Wajib)</span>
+              <span
+                className="truncate font-extrabold"
+                style={{ color: gradeMeta.accentHex }}
+                data-testid="grade-summary"
+              >
+                {gradeMeta.fullLabel}
+                <span className="hidden font-semibold text-[#475569] sm:inline">
+                  {' · '}
+                  {gradeMeta.summary}
+                </span>
+              </span>
+            </div>
+            <div
+              className="grid grid-cols-6 gap-1.5"
+              role="radiogroup"
+              aria-label="Pilih Kelas SD"
+            >
+              {GRADE_LEVELS.map((grade) => {
+                const gMeta = GRADE_META[grade];
+                const active = selectedGrade === grade;
+                return (
+                  <button
+                    key={grade}
+                    type="button"
+                    role="radio"
+                    aria-checked={active}
+                    data-testid={`grade-${grade}`}
+                    onClick={(e) => {
+                      onSelectGrade(grade);
+                      e.currentTarget.blur();
+                    }}
+                    style={active ? { backgroundColor: gMeta.accentHex } : undefined}
+                    className={`cursor-pointer whitespace-nowrap rounded-xl border-2 px-1 py-1.5 text-center font-display text-xs font-bold transition-transform sm:py-2 sm:text-[13px] ${
+                      active
+                        ? 'border-[#1e293b] text-white shadow-[0_3px_0_#1e293b]'
+                        : 'border-[#cbd5e1] bg-white text-[#1e293b] hover:border-[#64748b] hover:bg-[#f1f5f9]'
+                    }`}
+                  >
+                    <span className="sm:hidden">{gMeta.shortLabel}</span>
+                    <span className="hidden sm:inline">{gMeta.label}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* 6-Mode Selector: Mode Acak (Default) + 5 Playable Arenas */}
+          <div className="border-t-2 border-dashed border-[#e2e8f0] pt-2">
             <div className="mb-1.5 flex flex-wrap items-center justify-between gap-x-2 gap-y-0.5 text-xs font-bold text-[#334155]">
               <span>Pilih Mode Balapan</span>
               <span
@@ -239,14 +294,14 @@ export const TitleOverlay: React.FC<TitleOverlayProps> = ({
                       e.currentTarget.blur();
                     }}
                     style={active ? { backgroundColor: meta.accentHex } : undefined}
-                    className={`flex cursor-pointer items-center gap-2 rounded-xl border-2 px-2.5 py-2 text-left transition-transform ${
+                    className={`flex cursor-pointer items-center gap-2 rounded-xl border-2 px-2 py-1.5 text-left transition-transform sm:px-2.5 sm:py-2 ${
                       active
                         ? 'border-[#1e293b] text-white shadow-[0_3px_0_#1e293b]'
                         : 'border-[#cbd5e1] bg-white text-[#1e293b] hover:border-[#64748b] hover:bg-[#f1f5f9]'
                     }`}
                   >
                     <span
-                      className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border-2 border-[#1e293b]"
+                      className="flex h-6 w-6 shrink-0 items-center justify-center rounded-lg border-2 border-[#1e293b] sm:h-7 sm:w-7"
                       style={{ backgroundColor: meta.iconBgHex }}
                     >
                       <ModeIcon mode={modeId} />
@@ -263,7 +318,7 @@ export const TitleOverlay: React.FC<TitleOverlayProps> = ({
           {/* Subject Filter */}
           <div className="border-t-2 border-dashed border-[#e2e8f0] pt-2">
             <div className="mb-1.5 flex flex-wrap items-center justify-between gap-x-2 gap-y-0.5 text-xs font-bold text-[#334155]">
-              <span>Pilih Mata Pelajaran Kelas 5 SD</span>
+              <span>Pilih Mata Pelajaran {gradeMeta.fullLabel}</span>
               <span>{selectedMeta.gateSummary}</span>
             </div>
             <div className="flex flex-wrap gap-1.5 sm:flex-nowrap" role="radiogroup" aria-label="Pilih Mata Pelajaran">
@@ -279,7 +334,7 @@ export const TitleOverlay: React.FC<TitleOverlayProps> = ({
                       onSelectSubject(subj);
                       e.currentTarget.blur();
                     }}
-                    className={`cursor-pointer whitespace-nowrap rounded-xl border-2 px-2.5 py-1.5 text-xs font-bold transition-transform sm:py-2 ${
+                    className={`cursor-pointer whitespace-nowrap rounded-xl border-2 px-2.5 py-1.5 text-xs font-bold transition-transform sm:py-1.5 ${
                       active
                         ? 'border-[#1e293b] bg-[#2563eb] text-white shadow-[0_3px_0_#1e293b]'
                         : 'border-[#cbd5e1] bg-white text-[#1e293b] hover:border-[#64748b] hover:bg-[#f1f5f9]'

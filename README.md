@@ -1,6 +1,6 @@
 # Arham's Adventure
 
-**Arham's Adventure** adalah game balap halang rintang 3D bergaya *Stumble Guys* berbasis **Three.js + React + TypeScript** yang dirancang untuk siswa **Kelas 5 SD** di Indonesia. Pemain berperan sebagai **Arham** yang berlomba bersama 5 teman kelas AI melewati rintangan seru sambil menjawab soal pelajaran **Matematika, IPA, IPS & PPKn, dan Bahasa Indonesia**.
+**Arham's Adventure** adalah game balap halang rintang 3D bergaya *Stumble Guys* berbasis **Three.js + React + TypeScript** yang dirancang untuk siswa **SD Kelas 1–6** di Indonesia (default **Kelas 5 SD**, wajib dipilih di awal). Pemain berperan sebagai **Arham** yang berlomba bersama 5 teman kelas AI melewati rintangan seru sambil menjawab soal pelajaran **Matematika, IPA, IPS & PPKn, dan Bahasa Indonesia**.
 
 ---
 
@@ -14,7 +14,8 @@
 - **Lari Laser (`laser_dash`)**: Terinspirasi *Laser Dash / Block Dash* — arena neon gelap dengan **9 sinar laser menyapu** yang harus dilompati tepat waktu (disertai AI yang melompati laser, efek percikan listrik, dan **4 Gerbang Kuis**).
 - **Jatuh Madu (`honey_drop`)**: Terinspirasi *Honey Drop / Hex-A-Gone* — **3 arena heksagon sarang madu emas** yang setiap ubinnya mulai bergetar oranye → merah dan **runtuh 0,48 detik setelah diinjak** oleh pemain maupun bot, dipisahkan oleh **3 Gerbang Cekpoin Kuis**.
 
-### 2. Edukasi Kelas 5 SD & Review Materi
+### 2. Edukasi SD Kelas 1–6 & Review Materi
+- Pemilih **Kelas SD (Kelas 1 – Kelas 6, default Kelas 5)** wajib dipilih di layar awal, menyesuaikan tingkat kesulitan soal dan materi secara otomatis.
 - Filter mata pelajaran di layar awal: **Semua Mapel**, **Matematika**, **IPA**, **IPS & PPKn**, atau **Bahasa Indonesia**.
 - Papan tulis kuis interaktif di bagian atas layar menampilkan soal saat mendekati gerbang; tabrak pintu **A**, **B**, atau **C** sesuai jawaban benar.
 - Ringkasan pembahasan soal tampil di layar akhir (*Game Over / Victory*) sebagai bahan belajar.
@@ -25,9 +26,10 @@
 - **Musik Latar Dinamis (Web Audio API)**: Musik latar *looping* yang tempo (BPM) dan intensitas perkusinya meningkat otomatis saat sisa waktu lomba semakin menipis.
 - **Animasi Sprite Karakter**: Ekspresi Arham di layar awal dan HUD bereaksi secara dinamis (*idle*, *run*, *celebrate*, *bonk*) menggunakan animasi frame CSS.
 
-### 4. Progres & Replayability (`localStorage`)
-- **Lencana Pencapaian (*Achievements*)**: Melacak tonggak seperti *10 Benar Beruntun*, *Lap Tercepat*, *Juara 1*, *Sempurna Kuis*, dan *Kolektor Bintang*.
-- **Top Skor**: Menyimpan dan menampilkan **5 catatan waktu lap tercepat**.
+### 4. Progres, Replay Finis & Replayability (`localStorage`)
+- **Replay Finis Sinematik (5 Detik)**: Klip *slow-motion* otomatis 5 detik saat Arham melintasi garis finis dengan kamera orbit sinematik, kontrol **Lewati** (*Skip*) dan **Putar Ulang**.
+- **Lencana Pencapaian (*Achievements*)**: Melacak tonggak seperti *10 Benar Beruntun*, *Lap Tercepat*, *Juara #1 SD*, *Bintang Kuis Sempurna*, dan *Kolektor Bintang*.
+- **Top Skor**: Menyimpan dan menampilkan **5 catatan waktu lap tercepat** lengkap dengan info kelas & mata pelajaran.
 - **Misi Harian (*Daily Challenges*)**: 3 tantangan harian (termasuk *Jawab 5 Soal Benar*) dengan poin bonus yang otomatis reset setiap hari.
 
 ### 5. Dukungan Desktop & Mobile
@@ -64,6 +66,8 @@ Aplikasi berjalan di `http://localhost:3000`.
 - `http://localhost:3000/?mode=ice_slide&autostart=1` — Langsung bermain di mode **Seluncur Es**.
 - `http://localhost:3000/?mode=laser_dash&autostart=1` — Langsung bermain di mode **Lari Laser**.
 - `http://localhost:3000/?mode=honey_drop&autostart=1` — Langsung bermain di mode **Jatuh Madu**.
+- `http://localhost:3000/?grade=3&autostart=1` — Langsung bermain dengan soal **Kelas 3 SD** (`grade=1..6`, default `5`).
+- `http://localhost:3000/?preview_replay=1` — Pratinjau klip replay finis sinematik 5 detik.
 - `http://localhost:3000/?preview_gameover=1` — Pratinjau modal hasil akhir & lencana pencapaian.
 
 ### Build, Type-Check & Unit Test
@@ -88,8 +92,9 @@ src/
 ├── main.tsx                      # Entry point React
 ├── index.css                     # Tailwind CSS v4 & keyframes animasi sprite
 ├── components/                   # Komponen UI / HUD / Modal (React murni)
-│   ├── TitleOverlay.tsx          # Layar awal, pemilih mode & mata pelajaran
+│   ├── TitleOverlay.tsx          # Layar awal, pemilih kelas SD 1–6, mode & mapel
 │   ├── PlayingHud.tsx            # HUD balapan, papan kuis & utilitas pojok kanan
+│   ├── ReplayOverlay.tsx         # Overlay sinematik replay garis finis 5 detik
 │   ├── TouchControls.tsx         # Stik analog virtual, Auto Lari, Lompat & Terjang
 │   ├── StatusModals.tsx          # Modal Jeda, Menang, Waktu Habis & review kuis
 │   ├── AchievementBadges.tsx     # Tampilan kartu lencana pencapaian
@@ -106,7 +111,8 @@ src/
     ├── gameModes.ts              # Katalog mode, resolver Mode Acak, laser & hex grid (+ .test.ts)
     ├── tileFall.ts               # Generator grid Tile Fall, state ubin & AI (+ .test.ts)
     ├── physics.ts                # Fisika pembalap, kolisi & AI (+ .test.ts)
-    ├── questions.ts              # Bank soal Kelas 5 SD (+ .test.ts)
+    ├── questions.ts              # Bank soal SD Kelas 1–6 (+ .test.ts)
+    ├── replay.ts                 # Ring buffer, interpolasi slow-motion & kamera replay (+ .test.ts)
     ├── audio.ts                  # Synthesizer Web Audio SFX & sequencer musik
     ├── musicTempo.ts             # Kalkulasi tempo/BPM dinamis musik (+ .test.ts)
     ├── achievements.ts           # Logika lencana pencapaian (+ .test.ts)

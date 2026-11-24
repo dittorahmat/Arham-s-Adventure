@@ -36,15 +36,15 @@ export const ACHIEVEMENT_DEFS: readonly AchievementDef[] = [
   },
   {
     id: 'champion_1',
-    title: 'Juara #1 Kelas 5',
+    title: 'Juara #1 SD',
     description: 'Finis di peringkat pertama mengalahkan semua teman',
     icon: 'trophy',
     accentHex: '#eab308',
   },
   {
     id: 'perfect_quiz',
-    title: 'Bintang Kuis 5/5',
-    description: 'Jawab semua 5 gerbang kuis benar pada percobaan pertama',
+    title: 'Bintang Kuis Sempurna',
+    description: 'Jawab semua gerbang kuis benar pada percobaan pertama',
     icon: 'perfect',
     accentHex: '#16a34a',
   },
@@ -233,7 +233,7 @@ export function evaluateRunAchievements(
           nextTotalWins > 0 ? `${nextTotalWins}× Juara #1` : `Peringkat #${run.rank}`;
         break;
       case 'perfect_quiz':
-        progressText = unlocked ? '5/5 Sempurna' : `${run.correctCount}/${run.totalGates} kuis`;
+        progressText = unlocked ? '100% Sempurna' : `${run.correctCount}/${run.totalGates} kuis`;
         break;
       case 'star_collector':
         progressText = unlocked

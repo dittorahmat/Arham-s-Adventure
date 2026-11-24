@@ -40,7 +40,7 @@ export const GAME_MODE_CATALOG: Record<GameModeSelection, GameModeCatalogEntry> 
     iconBgHex: '#fbcfe8',
     gateSummary: 'Arena acak · 3–5 Kuis',
     introHeadline: 'Mode Acak Terpilih!',
-    introDetail: 'Siap-siap hadapi arena kejutan Kelas 5 SD!',
+    introDetail: 'Siap-siap hadapi arena kejutan dan kuis SD!',
   },
   classic: {
     id: 'classic',

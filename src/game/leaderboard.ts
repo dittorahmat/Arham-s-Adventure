@@ -1,4 +1,4 @@
-import { SubjectFilter } from './types';
+import { GradeLevel, SubjectFilter } from './types';
 
 export interface LeaderboardEntry {
   id: string;
@@ -8,6 +8,7 @@ export interface LeaderboardEntry {
   correctCount: number;
   totalGates: number;
   subject: SubjectFilter;
+  grade?: GradeLevel;
   achievedAt: string;
 }
 
@@ -18,6 +19,7 @@ export interface LapSubmission {
   correctCount: number;
   totalGates: number;
   subject: SubjectFilter;
+  grade?: GradeLevel;
   achievedAt?: string;
 }
 
@@ -31,6 +33,12 @@ export const LEADERBOARD_STORAGE_KEY = 'arham_adventure_top_laps_v1';
 export const MAX_LEADERBOARD_ENTRIES = 5;
 
 const VALID_SUBJECTS: readonly SubjectFilter[] = ['semua', 'matematika', 'ipa', 'ips', 'bahasa'];
+const VALID_GRADES: readonly GradeLevel[] = [1, 2, 3, 4, 5, 6];
+
+function sanitizeGrade(value: unknown): GradeLevel | undefined {
+  const n = Number(value);
+  return VALID_GRADES.includes(n as GradeLevel) ? (n as GradeLevel) : undefined;
+}
 
 function roundTenth(value: number): number {
   return Math.max(0.1, Math.round(value * 10) / 10);
@@ -55,6 +63,7 @@ export function recordFastestLap(
 ): { entries: LeaderboardEntry[]; insertedIndex: number; madeLeaderboard: boolean } {
   const achievedAt = submission.achievedAt ?? new Date().toISOString();
   const lapTimeSeconds = roundTenth(submission.lapTimeSeconds);
+  const grade = sanitizeGrade(submission.grade);
   const newEntry: LeaderboardEntry = {
     id: `${achievedAt}-${lapTimeSeconds}-${Math.round(submission.score)}-${Math.random().toString(36).slice(2, 6)}`,
     lapTimeSeconds,
@@ -63,6 +72,7 @@ export function recordFastestLap(
     correctCount: Math.max(0, Math.round(submission.correctCount)),
     totalGates: Math.max(1, Math.round(submission.totalGates)),
     subject: VALID_SUBJECTS.includes(submission.subject) ? submission.subject : 'semua',
+    ...(grade !== undefined ? { grade } : {}),
     achievedAt,
   };
 
@@ -115,6 +125,7 @@ export function loadLeaderboard(storage?: StorageLike | null): LeaderboardEntry[
       const subject: SubjectFilter = VALID_SUBJECTS.includes(item.subject)
         ? item.subject
         : 'semua';
+      const grade = sanitizeGrade(item.grade);
 
       sanitized.push({
         id: typeof item.id === 'string' && item.id ? item.id : `lap-${sanitized.length}-${lap}`,
@@ -128,6 +139,7 @@ export function loadLeaderboard(storage?: StorageLike | null): LeaderboardEntry[
           ? Math.max(1, Math.round(Number(item.totalGates)))
           : 5,
         subject,
+        ...(grade !== undefined ? { grade } : {}),
         achievedAt: typeof item.achievedAt === 'string' ? item.achievedAt : new Date(0).toISOString(),
       });
     }

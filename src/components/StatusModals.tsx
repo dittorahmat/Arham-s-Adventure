@@ -1,22 +1,26 @@
 import React from 'react';
-import { SUBJECT_COLORS } from '../game/questions';
-import { GameOverSnapshot, GameState } from '../game/types';
+import { GRADE_META, SUBJECT_COLORS } from '../game/questions';
+import { GameOverSnapshot, GameState, GradeLevel } from '../game/types';
 import { AchievementBadges } from './AchievementBadges';
 
 interface StatusModalsProps {
   gameState: GameState;
+  activeGrade: GradeLevel;
   gameOver: GameOverSnapshot | null;
   onResume: () => void;
   onRestart: () => void;
   onReturnTitle: () => void;
+  onWatchReplay: () => void;
 }
 
 export const StatusModals: React.FC<StatusModalsProps> = ({
   gameState,
+  activeGrade,
   gameOver,
   onResume,
   onRestart,
   onReturnTitle,
+  onWatchReplay,
 }) => {
   if (gameState === 'paused') {
     return (
@@ -31,7 +35,7 @@ export const StatusModals: React.FC<StatusModalsProps> = ({
             Permainan Dijeda
           </h2>
           <p className="mt-1 text-sm font-medium text-[#475569]">
-            Siap lanjutkan petualangan kuis kelas 5 SD bersama Arham?
+            Siap lanjutkan petualangan kuis {GRADE_META[activeGrade].fullLabel} bersama Arham?
           </p>
 
           <div className="mt-6 flex flex-col gap-3">
@@ -70,8 +74,9 @@ export const StatusModals: React.FC<StatusModalsProps> = ({
         : `Finis Peringkat #${gameOver.rank}!`
       : 'Waktu Habis!';
 
+    const gradeLabel = GRADE_META[gameOver.grade].fullLabel;
     const subtitle = isWin
-      ? 'Kamu berhasil menaklukkan lintasan langit dan 5 gerbang kuis kelas 5 SD.'
+      ? `Kamu berhasil menaklukkan lintasan langit dan ${gameOver.totalGates} gerbang kuis ${gradeLabel}.`
       : `Kamu mencapai ${gameOver.progressPct}% lintasan. Yuk coba lagi dan taklukkan garis finis!`;
 
     return (
@@ -197,10 +202,10 @@ export const StatusModals: React.FC<StatusModalsProps> = ({
               </div>
             )}
 
-            {/* Mini Educational Review of the 5 Grade 5 SD Questions */}
+            {/* Mini Educational Review of the Race Questions */}
             <div className="mt-3 rounded-2xl border-2 border-[#cbd5e1] bg-white p-3">
               <h3 className="mb-1.5 text-xs font-extrabold tracking-wide text-[#334155]">
-                Rangkuman Materi Kelas 5 SD Hari Ini
+                Rangkuman Materi {gradeLabel} Hari Ini
               </h3>
               <div className="flex flex-col divide-y divide-[#e2e8f0]">
                 {gameOver.review.map((item) => {
@@ -227,15 +232,33 @@ export const StatusModals: React.FC<StatusModalsProps> = ({
           </div>
 
           {/* Outcome Actions */}
-          <div className="mt-4 flex flex-wrap items-center justify-center gap-3">
+          <div className="mt-4 flex flex-wrap items-center justify-center gap-2.5 sm:gap-3">
             <button
               type="button"
               data-start="true"
               onClick={onRestart}
-              className="toy-btn flex-1 cursor-pointer whitespace-nowrap rounded-2xl border-[3px] border-[#1e293b] bg-[#facc15] px-6 py-3 font-display text-lg font-bold text-[#0f172a]"
+              className="toy-btn flex-1 cursor-pointer whitespace-nowrap rounded-2xl border-[3px] border-[#1e293b] bg-[#facc15] px-5 py-3 font-display text-lg font-bold text-[#0f172a]"
             >
               Main Lagi
             </button>
+            {isWin && gameOver.hasFinishReplay && (
+              <button
+                type="button"
+                data-testid="watch-replay"
+                onClick={(e) => {
+                  e.currentTarget.blur();
+                  onWatchReplay();
+                }}
+                className="toy-btn flex cursor-pointer items-center justify-center gap-2 whitespace-nowrap rounded-2xl border-[3px] border-[#1e293b] bg-[#38bdf8] px-4 py-3 font-display text-base font-bold text-[#0f172a]"
+              >
+                <svg viewBox="0 0 24 24" className="h-5 w-5 shrink-0" fill="none" aria-hidden="true">
+                  <rect x="3" y="6" width="13" height="12" rx="2.5" fill="#0f172a" />
+                  <polygon points="16,10 21.5,7 21.5,17 16,14" fill="#ef4444" stroke="#0f172a" strokeWidth="1.6" strokeLinejoin="round" />
+                  <polygon points="8,9.5 12.8,12 8,14.5" fill="#facc15" />
+                </svg>
+                <span>Replay Finis (5 dtk)</span>
+              </button>
+            )}
             <button
               type="button"
               onClick={onReturnTitle}

@@ -461,6 +461,7 @@ export function createQuizGateVisual(gate: QuizGateDef, maxAniso: number): QuizG
     subjInfo.label,
     subjInfo.accent,
     maxAniso,
+    gate.question.grade,
   );
   const lintel = new THREE.Mesh(
     new THREE.BoxGeometry(15.2, 2.2, 0.82),

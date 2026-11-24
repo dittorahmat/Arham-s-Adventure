@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { GAME_MODE_CATALOG } from '../game/gameModes';
-import { SUBJECT_COLORS } from '../game/questions';
+import { GRADE_META, SUBJECT_COLORS } from '../game/questions';
 import { resolveHudSpriteMood } from '../game/spriteMood';
 import {
   detectTouchEnvironment,
@@ -199,6 +199,17 @@ export const PlayingHud: React.FC<PlayingHudProps> = ({
               )}
             </span>
 
+            <span aria-hidden="true" className="text-[#94a3b8]">
+              ·
+            </span>
+            <span
+              className="whitespace-nowrap font-extrabold"
+              style={{ color: GRADE_META[hud.grade].accentHex }}
+              data-testid="hud-grade"
+            >
+              {GRADE_META[hud.grade].shortLabel}
+            </span>
+
             {hud.streak > 0 && (
               <>
                 <span aria-hidden="true" className="text-[#94a3b8]">
@@ -222,7 +233,7 @@ export const PlayingHud: React.FC<PlayingHudProps> = ({
             >
               <div className="mb-1 flex items-center justify-between gap-2 text-[11px] font-bold text-[#fde68a] sm:text-xs">
                 <span>
-                  Gerbang {gate.gateIndex + 1}/{hud.totalGates} · {gateSubj.label} · {gate.question.topic}
+                  Gerbang {gate.gateIndex + 1}/{hud.totalGates} · {GRADE_META[hud.grade].fullLabel} · {gateSubj.label} · {gate.question.topic}
                 </span>
                 <span className="hidden sm:inline">Tabrak Pintu Jawaban Benar!</span>
               </div>

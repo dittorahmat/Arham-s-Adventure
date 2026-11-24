@@ -338,6 +338,7 @@ export function createGateHeaderTexture(
   subjectLabel: string,
   accentHex: string,
   maxAniso: number,
+  grade?: number,
 ): THREE.CanvasTexture {
   // Match 15.2 x 2.2 box aspect (~6.9:1) so header text renders crisp with zero horizontal stretching
   const [canvas, ctx] = makeCanvas(1408, 204);
@@ -355,10 +356,16 @@ export function createGateHeaderTexture(
   ctx.fillRect(30, 30, 1348, 16);
 
   ctx.fillStyle = '#fef9c3';
-  ctx.font = 'bold 76px Fredoka, Plus Jakarta Sans, sans-serif';
+  ctx.font = 'bold 68px Fredoka, Plus Jakarta Sans, sans-serif';
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
-  ctx.fillText(`GERBANG KUIS ${gateNumber}  ·  ${subjectLabel.toUpperCase()}`, 704, 118);
+  const gradeSegment = grade ? `KLS ${grade}  ·  ` : '';
+  ctx.fillText(
+    `GERBANG KUIS ${gateNumber}  ·  ${gradeSegment}${subjectLabel.toUpperCase()}`,
+    704,
+    118,
+    1300,
+  );
 
   const tex = new THREE.CanvasTexture(canvas);
   tex.colorSpace = THREE.SRGBColorSpace;
