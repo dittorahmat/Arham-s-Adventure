@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { DailyChallengesState, loadDailyChallenges } from '../game/dailyChallenges';
+import { DIFFICULTY_CATALOG, DIFFICULTY_LEVELS } from '../game/difficulty';
 import { GAME_MODE_CATALOG, GAME_MODE_SELECTIONS } from '../game/gameModes';
 import {
   clearLeaderboard,
@@ -7,7 +8,13 @@ import {
   loadLeaderboard,
 } from '../game/leaderboard';
 import { GRADE_LEVELS, GRADE_META, SUBJECT_LABELS } from '../game/questions';
-import { GameModeSelection, GradeLevel, PlayableGameMode, SubjectFilter } from '../game/types';
+import {
+  DifficultyLevel,
+  GameModeSelection,
+  GradeLevel,
+  PlayableGameMode,
+  SubjectFilter,
+} from '../game/types';
 import { ArhamSprite } from './ArhamSprite';
 import { DailyChallengesModal } from './DailyChallengesModal';
 import { TopScoresModal } from './TopScoresModal';
@@ -15,6 +22,8 @@ import { TopScoresModal } from './TopScoresModal';
 interface TitleOverlayProps {
   selectedGrade: GradeLevel;
   onSelectGrade: (grade: GradeLevel) => void;
+  selectedDifficulty: DifficultyLevel;
+  onSelectDifficulty: (difficulty: DifficultyLevel) => void;
   selectedMode: GameModeSelection;
   previewMode: PlayableGameMode;
   onSelectMode: (mode: GameModeSelection) => void;
@@ -86,6 +95,8 @@ const ModeIcon: React.FC<{ mode: GameModeSelection }> = ({ mode }) => {
 export const TitleOverlay: React.FC<TitleOverlayProps> = ({
   selectedGrade,
   onSelectGrade,
+  selectedDifficulty,
+  onSelectDifficulty,
   selectedMode,
   previewMode,
   onSelectMode,
@@ -120,13 +131,14 @@ export const TitleOverlay: React.FC<TitleOverlayProps> = ({
   const selectedMeta = GAME_MODE_CATALOG[selectedMode];
   const previewMeta = GAME_MODE_CATALOG[previewMode];
   const gradeMeta = GRADE_META[selectedGrade];
+  const difficultyMeta = DIFFICULTY_CATALOG[selectedDifficulty];
 
   return (
-    <div className="pointer-events-none fixed inset-0 z-20 flex flex-col justify-between p-3.5 sm:p-6 lg:p-8">
+    <div className="pointer-events-none fixed inset-0 z-20 flex flex-col justify-between p-3 sm:p-5 lg:p-7">
       {/* Main Left-Third Negative-Space Lockup & Controls */}
-      <div className="my-auto flex max-w-xl flex-col items-start gap-3 sm:gap-4">
+      <div className="my-auto flex max-w-xl flex-col items-start gap-2.5 sm:gap-3.5">
         {/* Bespoke Inline SVG Title Emblem Lockup */}
-        <div className="w-full max-w-[330px] sm:max-w-[390px]">
+        <div className="w-full max-w-[265px] sm:max-w-[365px]">
           <svg
             viewBox="0 0 460 190"
             role="img"
@@ -208,11 +220,11 @@ export const TitleOverlay: React.FC<TitleOverlayProps> = ({
           </p>
         </div>
 
-        {/* Grade + Game Mode + Subject Filter Compact Toy Setup Panel */}
-        <div className="pointer-events-auto w-full max-w-xl space-y-2.5 rounded-2xl border-[3px] border-[#1e293b] bg-[#fffdf5]/95 p-3 toy-panel">
+        {/* Grade + Difficulty + Game Mode + Subject Filter Compact Toy Setup Panel */}
+        <div className="pointer-events-auto w-full max-w-xl space-y-2 rounded-2xl border-[3px] border-[#1e293b] bg-[#fffdf5]/95 p-2.5 sm:space-y-2.5 sm:p-3 toy-panel">
           {/* Mandatory SD Grade Selector (Kelas 1 - Kelas 6, default Kelas 5) */}
           <div>
-            <div className="mb-1.5 flex flex-wrap items-center justify-between gap-x-2 gap-y-0.5 text-xs font-bold text-[#334155]">
+            <div className="mb-1 flex flex-wrap items-center justify-between gap-x-2 gap-y-0.5 text-xs font-bold text-[#334155]">
               <span>Pilih Kelas SD (Wajib)</span>
               <span
                 className="truncate font-extrabold"
@@ -246,7 +258,7 @@ export const TitleOverlay: React.FC<TitleOverlayProps> = ({
                       e.currentTarget.blur();
                     }}
                     style={active ? { backgroundColor: gMeta.accentHex } : undefined}
-                    className={`cursor-pointer whitespace-nowrap rounded-xl border-2 px-1 py-1.5 text-center font-display text-xs font-bold transition-transform sm:py-2 sm:text-[13px] ${
+                    className={`cursor-pointer whitespace-nowrap rounded-xl border-2 px-1 py-1.5 text-center font-display text-xs font-bold transition-transform sm:py-1.5 sm:text-[13px] ${
                       active
                         ? 'border-[#1e293b] text-white shadow-[0_3px_0_#1e293b]'
                         : 'border-[#cbd5e1] bg-white text-[#1e293b] hover:border-[#64748b] hover:bg-[#f1f5f9]'
@@ -254,6 +266,58 @@ export const TitleOverlay: React.FC<TitleOverlayProps> = ({
                   >
                     <span className="sm:hidden">{gMeta.shortLabel}</span>
                     <span className="hidden sm:inline">{gMeta.label}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Difficulty Selector (Easy / Medium / Hard) */}
+          <div className="border-t-2 border-dashed border-[#e2e8f0] pt-2">
+            <div className="mb-1 flex flex-wrap items-center justify-between gap-x-2 gap-y-0.5 text-xs font-bold text-[#334155]">
+              <span>Tingkat Kesulitan</span>
+              <span
+                className="truncate font-extrabold"
+                style={{ color: difficultyMeta.accentHex }}
+                data-testid="difficulty-summary"
+              >
+                {difficultyMeta.subtitle}
+              </span>
+            </div>
+            <div
+              className="grid grid-cols-3 gap-1.5"
+              role="radiogroup"
+              aria-label="Tingkat Kesulitan"
+            >
+              {DIFFICULTY_LEVELS.map((diffId) => {
+                const dMeta = DIFFICULTY_CATALOG[diffId];
+                const active = selectedDifficulty === diffId;
+                return (
+                  <button
+                    key={diffId}
+                    type="button"
+                    role="radio"
+                    aria-checked={active}
+                    data-testid={`difficulty-${diffId}`}
+                    onClick={(e) => {
+                      onSelectDifficulty(diffId);
+                      e.currentTarget.blur();
+                    }}
+                    style={active ? { backgroundColor: dMeta.accentHex } : undefined}
+                    className={`flex cursor-pointer items-center justify-center gap-1.5 whitespace-nowrap rounded-xl border-2 px-2 py-1.5 font-display text-xs font-bold transition-transform sm:text-[13px] ${
+                      active
+                        ? 'border-[#1e293b] text-white shadow-[0_3px_0_#1e293b]'
+                        : 'border-[#cbd5e1] bg-white text-[#1e293b] hover:border-[#64748b] hover:bg-[#f1f5f9]'
+                    }`}
+                  >
+                    <span
+                      aria-hidden="true"
+                      className={`h-2.5 w-2.5 shrink-0 rounded-full border border-[#1e293b] ${
+                        active ? 'bg-white' : ''
+                      }`}
+                      style={!active ? { backgroundColor: dMeta.accentHex } : undefined}
+                    />
+                    <span>{dMeta.label}</span>
                   </button>
                 );
               })}
@@ -349,12 +413,12 @@ export const TitleOverlay: React.FC<TitleOverlayProps> = ({
         </div>
 
         {/* Primary Start CTA paired with animated Arham character mascot + optional Top Skor & Misi Harian buttons */}
-        <div className="pointer-events-auto flex flex-col items-start gap-3">
+        <div className="pointer-events-auto flex flex-col items-start gap-2.5">
           <div className="flex items-center gap-3">
-            <div className="flex h-[68px] w-[68px] shrink-0 items-center justify-center rounded-2xl border-[3px] border-[#1e293b] bg-[#e0f2fe] p-1 shadow-[0_5px_0_#1e293b] sm:h-[76px] sm:w-[76px]">
+            <div className="flex h-[60px] w-[60px] shrink-0 items-center justify-center rounded-2xl border-[3px] border-[#1e293b] bg-[#e0f2fe] p-1 shadow-[0_5px_0_#1e293b] sm:h-[72px] sm:w-[72px]">
               <ArhamSprite
                 mood="idle-cheer"
-                size={64}
+                size={58}
                 label="Karakter Arham melambai menyapa pemain"
               />
             </div>
@@ -365,13 +429,13 @@ export const TitleOverlay: React.FC<TitleOverlayProps> = ({
                 e.currentTarget.blur();
                 onStart();
               }}
-              className="toy-btn cursor-pointer whitespace-nowrap rounded-2xl border-[3px] border-[#1e293b] bg-[#facc15] px-6 py-4 font-display text-xl font-bold tracking-wide text-[#0f172a] focus-visible:outline-4 focus-visible:outline-white sm:px-7 sm:text-2xl"
+              className="toy-btn cursor-pointer whitespace-nowrap rounded-2xl border-[3px] border-[#1e293b] bg-[#facc15] px-6 py-3.5 font-display text-xl font-bold tracking-wide text-[#0f172a] focus-visible:outline-4 focus-visible:outline-white sm:px-7 sm:py-4 sm:text-2xl"
             >
               Mulai Petualangan
             </button>
           </div>
 
-          <div className="flex flex-wrap items-center gap-2.5">
+          <div className="flex flex-wrap items-center gap-2">
             <button
               type="button"
               data-testid="open-top-scores"
@@ -379,7 +443,7 @@ export const TitleOverlay: React.FC<TitleOverlayProps> = ({
                 e.currentTarget.blur();
                 handleOpenTopScores();
               }}
-              className="toy-btn flex cursor-pointer items-center gap-2 whitespace-nowrap rounded-2xl border-[3px] border-[#1e293b] bg-[#fffdf5] px-4 py-3 font-display text-base font-bold text-[#0f172a] focus-visible:outline-4 focus-visible:outline-white"
+              className="toy-btn flex cursor-pointer items-center gap-2 whitespace-nowrap rounded-2xl border-[3px] border-[#1e293b] bg-[#fffdf5] px-3.5 py-2.5 font-display text-sm font-bold text-[#0f172a] focus-visible:outline-4 focus-visible:outline-white sm:px-4 sm:py-3 sm:text-base"
             >
               <svg viewBox="0 0 24 24" className="h-5 w-5 shrink-0" fill="none" aria-hidden="true">
                 <path
@@ -407,7 +471,7 @@ export const TitleOverlay: React.FC<TitleOverlayProps> = ({
                 e.currentTarget.blur();
                 handleOpenDailyChallenges();
               }}
-              className="toy-btn flex cursor-pointer items-center gap-2 whitespace-nowrap rounded-2xl border-[3px] border-[#1e293b] bg-[#fffdf5] px-4 py-3 font-display text-base font-bold text-[#0f172a] focus-visible:outline-4 focus-visible:outline-white"
+              className="toy-btn flex cursor-pointer items-center gap-2 whitespace-nowrap rounded-2xl border-[3px] border-[#1e293b] bg-[#fffdf5] px-3.5 py-2.5 font-display text-sm font-bold text-[#0f172a] focus-visible:outline-4 focus-visible:outline-white sm:px-4 sm:py-3 sm:text-base"
             >
               <svg viewBox="0 0 24 24" className="h-5 w-5 shrink-0" fill="none" aria-hidden="true">
                 <rect x="4" y="5" width="16" height="15" rx="3" fill="#e0f2fe" stroke="#1e293b" strokeWidth="2.2" />

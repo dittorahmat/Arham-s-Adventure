@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { DIFFICULTY_CATALOG } from '../game/difficulty';
 import { GAME_MODE_CATALOG } from '../game/gameModes';
 import { GRADE_META, SUBJECT_COLORS } from '../game/questions';
 import { resolveHudSpriteMood } from '../game/spriteMood';
@@ -210,6 +211,17 @@ export const PlayingHud: React.FC<PlayingHudProps> = ({
               {GRADE_META[hud.grade].shortLabel}
             </span>
 
+            <span aria-hidden="true" className="text-[#94a3b8]">
+              ·
+            </span>
+            <span
+              className="whitespace-nowrap font-extrabold"
+              style={{ color: DIFFICULTY_CATALOG[hud.difficulty].accentHex }}
+              data-testid="hud-difficulty"
+            >
+              {DIFFICULTY_CATALOG[hud.difficulty].shortLabel}
+            </span>
+
             {hud.streak > 0 && (
               <>
                 <span aria-hidden="true" className="text-[#94a3b8]">
@@ -233,7 +245,7 @@ export const PlayingHud: React.FC<PlayingHudProps> = ({
             >
               <div className="mb-1 flex items-center justify-between gap-2 text-[11px] font-bold text-[#fde68a] sm:text-xs">
                 <span>
-                  Gerbang {gate.gateIndex + 1}/{hud.totalGates} · {GRADE_META[hud.grade].fullLabel} · {gateSubj.label} · {gate.question.topic}
+                  Gerbang {gate.gateIndex + 1}/{hud.totalGates} · {GRADE_META[hud.grade].fullLabel} · {DIFFICULTY_CATALOG[hud.difficulty].label} · {gateSubj.label} · {gate.question.topic}
                 </span>
                 <span className="hidden sm:inline">Tabrak Pintu Jawaban Benar!</span>
               </div>

@@ -8,11 +8,17 @@ import { PlayingHud } from './components/PlayingHud';
 import { ReplayOverlay } from './components/ReplayOverlay';
 import { StatusModals } from './components/StatusModals';
 import { TitleOverlay } from './components/TitleOverlay';
+import {
+  DEFAULT_DIFFICULTY,
+  loadDifficulty,
+  parseDifficultyParam,
+} from './game/difficulty';
 import { parseGameModeParam } from './game/gameModes';
 import { DEFAULT_GRADE_LEVEL, parseGradeParam } from './game/questions';
 import { ReplayHudSnapshot } from './game/replay';
 import { ArhamGameEngine } from './game/ThreeEngine';
 import {
+  DifficultyLevel,
   GameModeSelection,
   GameOverSnapshot,
   GameState,
@@ -26,6 +32,7 @@ const INITIAL_HUD: HudSnapshot = {
   mode: 'classic',
   selectedMode: 'random',
   grade: DEFAULT_GRADE_LEVEL,
+  difficulty: DEFAULT_DIFFICULTY,
   rank: 1,
   totalRacers: 6,
   score: 0,
@@ -48,6 +55,9 @@ export default function App() {
 
   const [gameState, setGameState] = useState<GameState>('title');
   const [selectedGrade, setSelectedGrade] = useState<GradeLevel>(DEFAULT_GRADE_LEVEL);
+  const [selectedDifficulty, setSelectedDifficulty] = useState<DifficultyLevel>(() =>
+    loadDifficulty(),
+  );
   const [selectedMode, setSelectedMode] = useState<GameModeSelection>('random');
   const [previewMode, setPreviewMode] = useState<PlayableGameMode>('classic');
   const [selectedSubject, setSelectedSubject] = useState<SubjectFilter>('semua');
@@ -81,8 +91,9 @@ export default function App() {
     });
     engineRef.current = engine;
     setPreviewMode(engine.getActiveMode());
+    setSelectedDifficulty(engine.getDifficulty());
 
-    // Support ?grade=1..6, ?mode=<random|classic|tile_fall|ice_slide|laser_dash|honey_drop>,
+    // Support ?grade=1..6, ?difficulty=<easy|medium|hard>, ?mode=<random|classic|tile_fall|ice_slide|laser_dash|honey_drop>,
     // ?autostart=1, ?preview_replay=1, and ?preview_gameover=1
     const params = new URLSearchParams(window.location.search);
     const parsedGrade = parseGradeParam(params.get('grade'));
@@ -90,6 +101,13 @@ export default function App() {
     if (parsedGrade !== null && parsedGrade !== DEFAULT_GRADE_LEVEL) {
       setSelectedGrade(parsedGrade);
       engine.setGradeLevel(parsedGrade);
+    }
+
+    const parsedDifficulty = parseDifficultyParam(params.get('difficulty'));
+    const initialDifficulty = parsedDifficulty ?? engine.getDifficulty();
+    if (parsedDifficulty !== null) {
+      setSelectedDifficulty(parsedDifficulty);
+      engine.setDifficulty(parsedDifficulty, false);
     }
 
     const initialMode = parseGameModeParam(params.get('mode'));
@@ -103,7 +121,7 @@ export default function App() {
     } else if (params.get('preview_gameover') === '1') {
       engine.previewGameOver();
     } else if (params.get('autostart') === '1') {
-      engine.startGame('semua', initialMode, false, initialGrade);
+      engine.startGame('semua', initialMode, false, initialGrade, initialDifficulty);
     }
 
     return () => {
@@ -115,6 +133,11 @@ export default function App() {
   const handleSelectGrade = useCallback((grade: GradeLevel) => {
     setSelectedGrade(grade);
     engineRef.current?.setGradeLevel(grade);
+  }, []);
+
+  const handleSelectDifficulty = useCallback((difficulty: DifficultyLevel) => {
+    setSelectedDifficulty(difficulty);
+    engineRef.current?.setDifficulty(difficulty);
   }, []);
 
   const handleSelectMode = useCallback((mode: GameModeSelection) => {
@@ -130,8 +153,14 @@ export default function App() {
   const handleStart = useCallback(() => {
     setGameOver(null);
     setReplay(null);
-    engineRef.current?.startGame(selectedSubject, selectedMode, false, selectedGrade);
-  }, [selectedSubject, selectedMode, selectedGrade]);
+    engineRef.current?.startGame(
+      selectedSubject,
+      selectedMode,
+      false,
+      selectedGrade,
+      selectedDifficulty,
+    );
+  }, [selectedSubject, selectedMode, selectedGrade, selectedDifficulty]);
 
   const handlePause = useCallback(() => {
     engineRef.current?.pauseGame();
@@ -186,6 +215,8 @@ export default function App() {
         <TitleOverlay
           selectedGrade={selectedGrade}
           onSelectGrade={handleSelectGrade}
+          selectedDifficulty={selectedDifficulty}
+          onSelectDifficulty={handleSelectDifficulty}
           selectedMode={selectedMode}
           previewMode={previewMode}
           onSelectMode={handleSelectMode}
@@ -216,6 +247,7 @@ export default function App() {
         <StatusModals
           gameState={gameState}
           activeGrade={selectedGrade}
+          activeDifficulty={selectedDifficulty}
           gameOver={gameOver}
           onResume={handleResume}
           onRestart={handleRestart}

@@ -16,6 +16,12 @@ import {
   saveDailyChallenges,
 } from './dailyChallenges';
 import {
+  DEFAULT_DIFFICULTY,
+  DIFFICULTY_CATALOG,
+  loadDifficulty,
+  saveDifficulty,
+} from './difficulty';
+import {
   GAME_MODE_CATALOG,
   getLaserBarrierZ,
   HONEY_DROP_CONSTANTS,
@@ -73,6 +79,7 @@ import {
   AchievementProfile,
   AnsweredReviewItem,
   CourseLayout,
+  DifficultyLevel,
   GameModeSelection,
   GameOverSnapshot,
   GameState,
@@ -153,6 +160,7 @@ export class ArhamGameEngine {
   private selectedMode: GameModeSelection = 'random';
   private activeMode: PlayableGameMode = resolveGameMode('random');
   private selectedGrade: GradeLevel = DEFAULT_GRADE_LEVEL;
+  private selectedDifficulty: DifficultyLevel = DEFAULT_DIFFICULTY;
   private subjectFilter: SubjectFilter = 'semua';
   private elapsedTime = 0;
   private worldTime = 0;
@@ -206,6 +214,7 @@ export class ArhamGameEngine {
     this.isSoftwareGl = detectSoftwareGl();
     this.achievementProfile = loadAchievementProfile();
     this.dailyChallenges = loadDailyChallenges();
+    this.selectedDifficulty = loadDifficulty();
     this.streak = this.achievementProfile.currentAnswerStreak;
 
     try {
@@ -318,6 +327,20 @@ export class ArhamGameEngine {
     return this.activeMode;
   }
 
+  public getDifficulty(): DifficultyLevel {
+    return this.selectedDifficulty;
+  }
+
+  public setDifficulty(difficulty: DifficultyLevel, persist = true): void {
+    this.selectedDifficulty = difficulty;
+    if (persist) {
+      saveDifficulty(difficulty);
+    }
+    if (this.gameState === 'title') {
+      this.rebuildRace(this.subjectFilter, this.activeMode);
+    }
+  }
+
   public setGradeLevel(grade: GradeLevel): void {
     this.selectedGrade = grade;
     if (this.gameState === 'title') {
@@ -349,9 +372,14 @@ export class ArhamGameEngine {
     modeSelection?: GameModeSelection,
     rerollIfRandom = false,
     grade?: GradeLevel,
+    difficulty?: DifficultyLevel,
   ): void {
     this.sound.unlock();
     if (grade) this.selectedGrade = grade;
+    if (difficulty) {
+      this.selectedDifficulty = difficulty;
+      saveDifficulty(difficulty);
+    }
     if (subject) this.subjectFilter = subject;
     if (modeSelection) {
       const selectionChanged = modeSelection !== this.selectedMode;
@@ -416,6 +444,7 @@ export class ArhamGameEngine {
       this.selectedMode,
       this.selectedMode === 'random',
       this.selectedGrade,
+      this.selectedDifficulty,
     );
   }
 
@@ -500,8 +529,14 @@ export class ArhamGameEngine {
     this.racerRigs = [];
     this.finishTrophy = null;
 
-    const questions = selectRaceQuestions(subject, 5, undefined, this.selectedGrade);
-    this.course = createCourseLayout(questions, mode);
+    const questions = selectRaceQuestions(
+      subject,
+      5,
+      undefined,
+      this.selectedGrade,
+      this.selectedDifficulty,
+    );
+    this.course = createCourseLayout(questions, mode, Date.now(), this.selectedDifficulty);
     this.racers = createInitialRacers();
 
     this.elapsedTime = 0;
@@ -895,7 +930,8 @@ export class ArhamGameEngine {
 
               this.streak = this.achievementProfile.currentAnswerStreak;
               this.correctCount += 1;
-              const bonus = 100 + Math.min(4, this.streak - 1) * 25;
+              const diffMul = DIFFICULTY_CATALOG[this.selectedDifficulty].scoreMultiplier;
+              const bonus = Math.round((100 + Math.min(4, this.streak - 1) * 25) * diffMul);
               this.score += bonus;
 
               if (streakResult.unlockedStreak10Now) {
@@ -1275,6 +1311,7 @@ export class ArhamGameEngine {
     const snapshot: GameOverSnapshot = {
       outcome,
       grade: this.selectedGrade,
+      difficulty: this.selectedDifficulty,
       rank,
       totalRacers: this.racers.length,
       score: Math.round(this.score),
@@ -1320,6 +1357,7 @@ export class ArhamGameEngine {
       mode: this.course.mode,
       selectedMode: this.selectedMode,
       grade: this.selectedGrade,
+      difficulty: this.selectedDifficulty,
       rank,
       totalRacers: this.racers.length,
       score: Math.round(this.score),

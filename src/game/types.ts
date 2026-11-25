@@ -6,6 +6,8 @@ export type SubjectKey = Exclude<SubjectFilter, 'semua'>;
 
 export type GradeLevel = 1 | 2 | 3 | 4 | 5 | 6;
 
+export type DifficultyLevel = 'easy' | 'medium' | 'hard';
+
 export type PlayableGameMode = 'classic' | 'tile_fall' | 'ice_slide' | 'laser_dash' | 'honey_drop';
 
 export type GameMode = PlayableGameMode;
@@ -55,6 +57,7 @@ export interface QuizQuestion {
   options: [string, string, string];
   correctIndex: 0 | 1 | 2;
   explanation: string;
+  difficultyTier?: DifficultyLevel;
 }
 
 export interface PlatformDef {
@@ -251,6 +254,7 @@ export interface HudSnapshot {
   mode: PlayableGameMode;
   selectedMode: GameModeSelection;
   grade: GradeLevel;
+  difficulty: DifficultyLevel;
   rank: number;
   totalRacers: number;
   score: number;
@@ -284,6 +288,7 @@ export interface AnsweredReviewItem {
 export interface GameOverSnapshot {
   outcome: 'victory' | 'timeout';
   grade: GradeLevel;
+  difficulty: DifficultyLevel;
   rank: number;
   totalRacers: number;
   score: number;

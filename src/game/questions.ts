@@ -1,4 +1,5 @@
-import { GradeLevel, QuizQuestion, SubjectFilter, SubjectKey } from './types';
+import { DEFAULT_DIFFICULTY, scoreQuestionComplexity } from './difficulty';
+import { DifficultyLevel, GradeLevel, QuizQuestion, SubjectFilter, SubjectKey } from './types';
 
 export const GRADE_LEVELS: readonly GradeLevel[] = [1, 2, 3, 4, 5, 6] as const;
 
@@ -1432,6 +1433,141 @@ export const ALL_SD_QUESTIONS: readonly QuizQuestion[] = [
     correctIndex: 1,
     explanation: 'Simpulan menyajikan inti terpenting dari keseluruhan teks bacaan.',
   },
+  // =========================================================================
+  // SOAL PEMANASAN DASAR KELAS 1 (Mudah) & TANTANGAN HOTS KELAS 6 (Sulit)
+  // =========================================================================
+  {
+    id: 'k1-mat-easy-1',
+    grade: 1,
+    subject: 'matematika',
+    topic: 'Penjumlahan Dasar',
+    question: 'Hasil dari 2 + 3 adalah ...',
+    options: ['4', '5', '6'],
+    correctIndex: 1,
+    explanation: '2 ditambah 3 sama dengan 5.',
+    difficultyTier: 'easy',
+  },
+  {
+    id: 'k1-ipa-easy-1',
+    grade: 1,
+    subject: 'ipa',
+    topic: 'Hewan',
+    question: 'Hewan yang biasa dipelihara dan suka mengeong adalah ...',
+    options: ['Kucing', 'Ikan', 'Burung'],
+    correctIndex: 0,
+    explanation: 'Kucing bersuara "meong" dan sering menjadi hewan peliharaan.',
+    difficultyTier: 'easy',
+  },
+  {
+    id: 'k1-ips-easy-1',
+    grade: 1,
+    subject: 'ips',
+    topic: 'Keluarga',
+    question: 'Orang tua laki-laki kita di rumah disebut ...',
+    options: ['Ibu', 'Ayah', 'Adik'],
+    correctIndex: 1,
+    explanation: 'Ayah adalah orang tua laki-laki dalam keluarga.',
+    difficultyTier: 'easy',
+  },
+  {
+    id: 'k1-bhs-easy-1',
+    grade: 1,
+    subject: 'bahasa',
+    topic: 'Huruf Vokal',
+    question: 'Huruf pertama pada abjad adalah huruf ...',
+    options: ['A', 'B', 'C'],
+    correctIndex: 0,
+    explanation: 'Urutan huruf abjad dimulai dari huruf A.',
+    difficultyTier: 'easy',
+  },
+  {
+    id: 'k6-mat-hard-1',
+    grade: 6,
+    subject: 'matematika',
+    topic: 'Perbandingan & Persen',
+    question: 'Harga tas Rp120.000 mendapat diskon 25%. Berapa rupiah yang harus dibayar?',
+    options: ['Rp85.000', 'Rp90.000', 'Rp95.000'],
+    correctIndex: 1,
+    explanation: 'Diskon 25% dari 120.000 adalah 30.000, sehingga bayar 120.000 - 30.000 = Rp90.000.',
+    difficultyTier: 'hard',
+  },
+  {
+    id: 'k6-mat-hard-2',
+    grade: 6,
+    subject: 'matematika',
+    topic: 'Volume Gabungan',
+    question: 'Sebuah tabung berjari-jari 7 cm dan tinggi 10 cm (π = 22/7). Volumenya adalah ...',
+    options: ['1.540 cm³', '1.440 cm³', '770 cm³'],
+    correctIndex: 0,
+    explanation: 'Volume tabung = π × r² × t = (22/7) × 7 × 7 × 10 = 1.540 cm³.',
+    difficultyTier: 'hard',
+  },
+  {
+    id: 'k6-ipa-hard-1',
+    grade: 6,
+    subject: 'ipa',
+    topic: 'Gerhana Matahari',
+    question: 'Mengapa gerhana matahari total terjadi pada siang hari?',
+    options: ['Bulan menutupi Matahari', 'Bumi menutupi Bulan', 'Matahari padam sementara'],
+    correctIndex: 0,
+    explanation: 'Saat Bulan berada tepat di antara Matahari dan Bumi, bayangan umbra Bulan jatuh ke Bumi.',
+    difficultyTier: 'hard',
+  },
+  {
+    id: 'k6-ipa-hard-2',
+    grade: 6,
+    subject: 'ipa',
+    topic: 'Rangkaian Listrik',
+    question: 'Jika satu lampu padam pada rangkaian paralel, bagaimana kondisi lampu lainnya?',
+    options: ['Ikut padam semua', 'Tetap menyala terang', 'Menyala makin redup'],
+    correctIndex: 1,
+    explanation: 'Pada rangkaian paralel tiap cabang punya jalur arus sendiri, sehingga lampu lain tetap menyala.',
+    difficultyTier: 'hard',
+  },
+  {
+    id: 'k6-ips-hard-1',
+    grade: 6,
+    subject: 'ips',
+    topic: 'Sejarah ASEAN',
+    question: 'Perbedaan tujuan utama ASEAN dengan PBB terletak pada ruang lingkup kerja samanya, yaitu ...',
+    options: ['Kawasan Asia Tenggara', 'Seluruh benua Eropa', 'Khusus bidang militer'],
+    correctIndex: 0,
+    explanation: 'ASEAN fokus pada kerja sama ekonomi, sosial, dan budaya negara-negara kawasan Asia Tenggara.',
+    difficultyTier: 'hard',
+  },
+  {
+    id: 'k6-ips-hard-2',
+    grade: 6,
+    subject: 'ips',
+    topic: 'Globalisasi',
+    question: 'Sikap bijak pelajar SD menghadapi dampak globalisasi budaya asing adalah ...',
+    options: ['Menolak semua teknologi', 'Menyaring sesuai Pancasila', 'Meniru semua tren luar'],
+    correctIndex: 1,
+    explanation: 'Pelajar perlu terbuka pada kemajuan sambil menyaring budaya luar sesuai nilai luhur Pancasila.',
+    difficultyTier: 'hard',
+  },
+  {
+    id: 'k6-bhs-hard-1',
+    grade: 6,
+    subject: 'bahasa',
+    topic: 'Kalimat Efektif',
+    question: 'Perbaikan kalimat efektif dari "Para siswa-siswa sedang belajar bersama" adalah ...',
+    options: ['Para siswa sedang belajar', 'Siswa-siswa para belajar', 'Semua para siswa belajar'],
+    correctIndex: 0,
+    explanation: 'Kata "para" sudah bermakna jamak sehingga tidak perlu diulang dengan "siswa-siswa".',
+    difficultyTier: 'hard',
+  },
+  {
+    id: 'k6-bhs-hard-2',
+    grade: 6,
+    subject: 'bahasa',
+    topic: 'Teks Eksplanasi',
+    question: 'Urutan struktur teks eksplanasi ilmiah yang runtut adalah ...',
+    options: ['Umum - Sebab-akibat - Simpulan', 'Orientasi - Konflik - Amanat', 'Tujuan - Bahan - Langkah'],
+    correctIndex: 0,
+    explanation: 'Teks eksplanasi disusun dari pernyataan umum, deretan penjelas sebab-akibat, lalu interpretasi/simpulan.',
+    difficultyTier: 'hard',
+  },
 ];
 
 export const GRADE_5_QUESTIONS: readonly QuizQuestion[] = ALL_SD_QUESTIONS.filter(
@@ -1469,13 +1605,56 @@ function createSeededRng(seed: number): () => number {
   };
 }
 
+function getDifficultyCandidatePool(
+  grade: GradeLevel,
+  difficulty: DifficultyLevel,
+): QuizQuestion[] {
+  const exactGrade = getQuestionsByGrade(grade);
+  if (difficulty === 'medium') {
+    return exactGrade;
+  }
+  if (difficulty === 'easy') {
+    // Include lower-grade foundational items for grades 2..6 so Easy genuinely simplifies quizzes
+    const lowerGrade = grade > 1 ? getQuestionsByGrade((grade - 1) as GradeLevel) : [];
+    return [...exactGrade, ...lowerGrade];
+  }
+  // Hard: blend in next-grade challenge questions for grades 1..5 (Kelas 6 uses dedicated HOTS bank)
+  const higherGrade = grade < 6 ? getQuestionsByGrade((grade + 1) as GradeLevel) : [];
+  return [...exactGrade, ...higherGrade];
+}
+
+function orderByDifficulty(
+  items: readonly QuizQuestion[],
+  difficulty: DifficultyLevel,
+  rng: () => number,
+): QuizQuestion[] {
+  const arr = [...items];
+  if (difficulty === 'medium') {
+    for (let i = arr.length - 1; i > 0; i--) {
+      const j = Math.floor(rng() * (i + 1));
+      [arr[i], arr[j]] = [arr[j], arr[i]];
+    }
+    return arr;
+  }
+
+  // Sort by complexity with light seeded jitter so repeated runs stay varied within the target tier
+  const scored = arr.map((q) => ({
+    q,
+    key: scoreQuestionComplexity(q) + (rng() - 0.5) * 2.4,
+  }));
+
+  scored.sort((a, b) => (difficulty === 'easy' ? a.key - b.key : b.key - a.key));
+  return scored.map((entry) => entry.q);
+}
+
 export function selectRaceQuestions(
   subject: SubjectFilter,
   count: number,
   seed?: number,
   grade: GradeLevel = DEFAULT_GRADE_LEVEL,
+  difficulty: DifficultyLevel = DEFAULT_DIFFICULTY,
 ): QuizQuestion[] {
-  const gradePool = getQuestionsByGrade(grade);
+  const candidatePool = getDifficultyCandidatePool(grade, difficulty);
   const rng = seed !== undefined ? createSeededRng(seed) : Math.random;
   const shuffle = <T,>(items: readonly T[]): T[] => {
     const arr = [...items];
@@ -1487,7 +1666,11 @@ export function selectRaceQuestions(
   };
 
   if (subject !== 'semua') {
-    const filtered = shuffle(gradePool.filter((q) => q.subject === subject));
+    const filtered = orderByDifficulty(
+      candidatePool.filter((q) => q.subject === subject),
+      difficulty,
+      rng,
+    );
     const chosen: QuizQuestion[] = [];
     for (let i = 0; i < count; i++) {
       chosen.push(filtered[i % filtered.length]);
@@ -1495,13 +1678,29 @@ export function selectRaceQuestions(
     return chosen;
   }
 
-  // Balanced mix across all 4 SD subjects for the selected grade when "semua" is selected
+  // Balanced mix across all 4 SD subjects for the selected grade & difficulty
   const subjects: SubjectKey[] = shuffle(['matematika', 'ipa', 'ips', 'bahasa']);
   const pools: Record<SubjectKey, QuizQuestion[]> = {
-    matematika: shuffle(gradePool.filter((q) => q.subject === 'matematika')),
-    ipa: shuffle(gradePool.filter((q) => q.subject === 'ipa')),
-    ips: shuffle(gradePool.filter((q) => q.subject === 'ips')),
-    bahasa: shuffle(gradePool.filter((q) => q.subject === 'bahasa')),
+    matematika: orderByDifficulty(
+      candidatePool.filter((q) => q.subject === 'matematika'),
+      difficulty,
+      rng,
+    ),
+    ipa: orderByDifficulty(
+      candidatePool.filter((q) => q.subject === 'ipa'),
+      difficulty,
+      rng,
+    ),
+    ips: orderByDifficulty(
+      candidatePool.filter((q) => q.subject === 'ips'),
+      difficulty,
+      rng,
+    ),
+    bahasa: orderByDifficulty(
+      candidatePool.filter((q) => q.subject === 'bahasa'),
+      difficulty,
+      rng,
+    ),
   };
 
   const result: QuizQuestion[] = [];

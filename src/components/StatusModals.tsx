@@ -1,11 +1,13 @@
 import React from 'react';
+import { DIFFICULTY_CATALOG } from '../game/difficulty';
 import { GRADE_META, SUBJECT_COLORS } from '../game/questions';
-import { GameOverSnapshot, GameState, GradeLevel } from '../game/types';
+import { DifficultyLevel, GameOverSnapshot, GameState, GradeLevel } from '../game/types';
 import { AchievementBadges } from './AchievementBadges';
 
 interface StatusModalsProps {
   gameState: GameState;
   activeGrade: GradeLevel;
+  activeDifficulty: DifficultyLevel;
   gameOver: GameOverSnapshot | null;
   onResume: () => void;
   onRestart: () => void;
@@ -16,6 +18,7 @@ interface StatusModalsProps {
 export const StatusModals: React.FC<StatusModalsProps> = ({
   gameState,
   activeGrade,
+  activeDifficulty,
   gameOver,
   onResume,
   onRestart,
@@ -35,7 +38,7 @@ export const StatusModals: React.FC<StatusModalsProps> = ({
             Permainan Dijeda
           </h2>
           <p className="mt-1 text-sm font-medium text-[#475569]">
-            Siap lanjutkan petualangan kuis {GRADE_META[activeGrade].fullLabel} bersama Arham?
+            Siap lanjutkan petualangan kuis {GRADE_META[activeGrade].fullLabel} ({DIFFICULTY_CATALOG[activeDifficulty].label}) bersama Arham?
           </p>
 
           <div className="mt-6 flex flex-col gap-3">
@@ -75,9 +78,10 @@ export const StatusModals: React.FC<StatusModalsProps> = ({
       : 'Waktu Habis!';
 
     const gradeLabel = GRADE_META[gameOver.grade].fullLabel;
+    const difficultyLabel = DIFFICULTY_CATALOG[gameOver.difficulty].label;
     const subtitle = isWin
-      ? `Kamu berhasil menaklukkan lintasan langit dan ${gameOver.totalGates} gerbang kuis ${gradeLabel}.`
-      : `Kamu mencapai ${gameOver.progressPct}% lintasan. Yuk coba lagi dan taklukkan garis finis!`;
+      ? `Kamu berhasil menaklukkan lintasan langit (${difficultyLabel}) dan ${gameOver.totalGates} gerbang kuis ${gradeLabel}.`
+      : `Kamu mencapai ${gameOver.progressPct}% lintasan (${difficultyLabel}). Yuk coba lagi dan taklukkan garis finis!`;
 
     return (
       <div

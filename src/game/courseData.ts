@@ -1,9 +1,11 @@
+import { applyDifficultyToCourseLayout, DEFAULT_DIFFICULTY } from './difficulty';
 import { generateHoneyHexGrid } from './gameModes';
 import { generateTileGrid } from './tileFall';
 import {
   AiPolicy,
   BumperDef,
   CourseLayout,
+  DifficultyLevel,
   FallingTileDef,
   LaserBarrierDef,
   PlatformDef,
@@ -113,20 +115,24 @@ export function createCourseLayout(
   questions: QuizQuestion[],
   mode: PlayableGameMode = 'classic',
   seed = Date.now(),
+  difficulty: DifficultyLevel = DEFAULT_DIFFICULTY,
 ): CourseLayout {
+  let layout: CourseLayout;
   if (mode === 'tile_fall') {
-    return createTileFallCourseLayout(questions, seed);
+    layout = createTileFallCourseLayout(questions, seed);
+  } else if (mode === 'ice_slide') {
+    layout = createIceSlideCourseLayout(questions);
+  } else if (mode === 'laser_dash') {
+    layout = createLaserDashCourseLayout(questions);
+  } else if (mode === 'honey_drop') {
+    layout = createHoneyDropCourseLayout(questions, seed);
+  } else {
+    layout = createClassicCourseLayout(questions);
   }
-  if (mode === 'ice_slide') {
-    return createIceSlideCourseLayout(questions);
-  }
-  if (mode === 'laser_dash') {
-    return createLaserDashCourseLayout(questions);
-  }
-  if (mode === 'honey_drop') {
-    return createHoneyDropCourseLayout(questions, seed);
-  }
+  return applyDifficultyToCourseLayout(layout, difficulty);
+}
 
+function createClassicCourseLayout(questions: QuizQuestion[]): CourseLayout {
   if (questions.length < 5) {
     throw new Error('Course layout requires at least 5 quiz questions.');
   }
