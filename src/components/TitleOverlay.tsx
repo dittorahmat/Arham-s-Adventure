@@ -121,6 +121,15 @@ export const TitleOverlay: React.FC<TitleOverlayProps> = ({
     loadDailyChallenges(),
   );
 
+  const ensureValidNickname = (): boolean => {
+    if (!validateNickname(nickname).valid) {
+      setNicknameError('Isi nama panggilanmu dulu ya (minimal 2 huruf)!');
+      nicknameInputRef.current?.focus();
+      return false;
+    }
+    return true;
+  };
+
   const handleOpenTopScores = () => {
     setTopScores(loadLeaderboard());
     setShowTopScores(true);
@@ -463,11 +472,7 @@ export const TitleOverlay: React.FC<TitleOverlayProps> = ({
               data-start="true"
               onClick={(e) => {
                 e.currentTarget.blur();
-                if (!validateNickname(nickname).valid) {
-                  setNicknameError('Isi nama panggilanmu dulu ya (minimal 2 huruf)!');
-                  nicknameInputRef.current?.focus();
-                  return;
-                }
+                if (!ensureValidNickname()) return;
                 onStart();
               }}
               className="toy-btn cursor-pointer whitespace-nowrap rounded-2xl border-[3px] border-[#1e293b] bg-[#facc15] px-6 py-3.5 font-display text-xl font-bold tracking-wide text-[#0f172a] focus-visible:outline-4 focus-visible:outline-white sm:px-7 sm:py-4 sm:text-2xl"
@@ -483,11 +488,7 @@ export const TitleOverlay: React.FC<TitleOverlayProps> = ({
                 data-testid="open-lobby"
                 onClick={(e) => {
                   e.currentTarget.blur();
-                  if (!validateNickname(nickname).valid) {
-                    setNicknameError('Isi nama panggilanmu dulu ya (minimal 2 huruf)!');
-                    nicknameInputRef.current?.focus();
-                    return;
-                  }
+                  if (!ensureValidNickname()) return;
                   onOpenLobby();
                 }}
                 className="toy-btn flex cursor-pointer items-center gap-2 whitespace-nowrap rounded-2xl border-[3px] border-[#1e293b] bg-emerald-400 px-3.5 py-2.5 font-display text-sm font-bold text-[#0f172a] focus-visible:outline-4 focus-visible:outline-white sm:px-4 sm:py-3 sm:text-base"
