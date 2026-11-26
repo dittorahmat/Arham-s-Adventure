@@ -1,5 +1,10 @@
 import React, { useEffect, useState } from 'react';
-import { formatLapTime, LeaderboardEntry } from '../game/leaderboard';
+import {
+  fetchGlobalLeaderboard,
+  formatLapTime,
+  GlobalLeaderboardEntry,
+  LeaderboardEntry,
+} from '../game/leaderboard';
 import { SUBJECT_LABELS } from '../game/questions';
 
 interface TopScoresModalProps {
@@ -16,6 +21,28 @@ const MEDAL_STYLES = [
 
 export const TopScoresModal: React.FC<TopScoresModalProps> = ({ entries, onClose, onClear }) => {
   const [confirmClear, setConfirmClear] = useState(false);
+  const [activeTab, setActiveTab] = useState<'local' | 'global'>('local');
+  const [globalEntries, setGlobalEntries] = useState<GlobalLeaderboardEntry[]>([]);
+  const [globalSource, setGlobalSource] = useState<'global' | 'local'>('global');
+  const [globalLoading, setGlobalLoading] = useState(false);
+
+  useEffect(() => {
+    if (activeTab !== 'global') return;
+    let cancelled = false;
+    setGlobalLoading(true);
+    fetchGlobalLeaderboard()
+      .then((res) => {
+        if (cancelled) return;
+        setGlobalEntries(res.entries);
+        setGlobalSource(res.source);
+      })
+      .finally(() => {
+        if (!cancelled) setGlobalLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [activeTab]);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -83,9 +110,99 @@ export const TopScoresModal: React.FC<TopScoresModalProps> = ({ entries, onClose
           </button>
         </div>
 
+        {/* Tab Toggle: Lokal vs Global */}
+        <div className="mt-3 flex gap-2 rounded-2xl border-2 border-[#1e293b] bg-[#f1f5f9] p-1">
+          <button
+            type="button"
+            data-testid="tab-local-scores"
+            onClick={(e) => {
+              e.currentTarget.blur();
+              setActiveTab('local');
+            }}
+            className={`flex-1 cursor-pointer rounded-xl px-3 py-1.5 font-display text-xs font-bold transition-colors ${
+              activeTab === 'local'
+                ? 'bg-[#2563eb] text-white shadow-[0_2px_0_#1e293b]'
+                : 'text-[#475569] hover:text-[#0f172a]'
+            }`}
+          >
+            Lokal (Perangkat)
+          </button>
+          <button
+            type="button"
+            data-testid="tab-global-scores"
+            onClick={(e) => {
+              e.currentTarget.blur();
+              setActiveTab('global');
+            }}
+            className={`flex-1 cursor-pointer rounded-xl px-3 py-1.5 font-display text-xs font-bold transition-colors ${
+              activeTab === 'global'
+                ? 'bg-[#2563eb] text-white shadow-[0_2px_0_#1e293b]'
+                : 'text-[#475569] hover:text-[#0f172a]'
+            }`}
+          >
+            Global (Online)
+          </button>
+        </div>
+
         {/* Leaderboard List or Empty State */}
-        <div className="mt-4 flex-1 overflow-y-auto pr-0.5">
-          {entries.length === 0 ? (
+        <div className="mt-3 flex-1 overflow-y-auto pr-0.5">
+          {activeTab === 'global' ? (
+            globalLoading ? (
+              <div className="rounded-2xl border-2 border-dashed border-[#94a3b8] bg-[#f8fafc] px-4 py-7 text-center">
+                <p className="font-display text-sm font-bold text-[#475569]">Memuat papan skor global...</p>
+              </div>
+            ) : globalEntries.length === 0 ? (
+              <div className="rounded-2xl border-2 border-dashed border-[#94a3b8] bg-[#f8fafc] px-4 py-7 text-center">
+                <p className="font-display text-base font-bold text-[#0f172a]">Belum Ada Rekor Global</p>
+                <p className="mt-1 text-xs font-medium text-[#64748b]">
+                  Selesaikan pertandingan multiplayer untuk mencatat rekor ke papan skor global!
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {globalSource === 'local' && (
+                  <p className="rounded-xl border border-[#ca8a04] bg-[#fefce8] px-3 py-1.5 text-[11px] font-semibold text-[#854d0e]">
+                    Sedang offline — menampilkan data lokal perangkat.
+                  </p>
+                )}
+                <ol data-testid="global-scores-list" className="space-y-2">
+                  {globalEntries.map((entry, idx) => {
+                    const medal = MEDAL_STYLES[idx];
+                    return (
+                      <li
+                        key={entry.id}
+                        className={`flex items-center justify-between gap-2 rounded-2xl border-2 px-3 py-2 ${
+                          medal ? `${medal.bg} ${medal.border}` : 'border-[#cbd5e1] bg-white'
+                        }`}
+                      >
+                        <div className="flex min-w-0 items-center gap-2.5">
+                          <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-xl border-2 border-[#1e293b] bg-white font-display text-xs font-extrabold text-[#0f172a]">
+                            #{idx + 1}
+                          </span>
+                          <div className="min-w-0">
+                            <p className="truncate font-display text-sm font-bold text-[#0f172a]">
+                              {entry.nickname}
+                            </p>
+                            <p className="text-[11px] font-semibold text-[#475569]">
+                              {SUBJECT_LABELS[entry.subject]}
+                              {entry.grade ? ` · Kls ${entry.grade}` : ''}
+                              {entry.mode ? ` · ${entry.mode}` : ''}
+                            </p>
+                          </div>
+                        </div>
+                        <div className="shrink-0 text-right">
+                          <p className="font-display text-sm font-extrabold text-[#1d4ed8]">
+                            {formatLapTime(entry.lapTimeSeconds)}
+                          </p>
+                          <p className="text-[11px] font-bold text-[#475569]">{entry.score} poin</p>
+                        </div>
+                      </li>
+                    );
+                  })}
+                </ol>
+              </div>
+            )
+          ) : entries.length === 0 ? (
             <div
               data-testid="top-scores-empty"
               className="rounded-2xl border-2 border-dashed border-[#94a3b8] bg-[#f8fafc] px-4 py-7 text-center"

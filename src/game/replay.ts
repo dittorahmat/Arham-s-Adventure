@@ -485,3 +485,85 @@ export function computeReplayCameraPose(
     fov,
   };
 }
+
+/**
+ * Serializes a FinishReplayClip into a compact JSON string for R2 storage.
+ */
+export function serializeReplayClip(clip: FinishReplayClip): string {
+  return JSON.stringify(clip);
+}
+
+/**
+ * Parses and validates a FinishReplayClip JSON string. Returns null if invalid.
+ */
+export function parseReplayClip(raw: string): FinishReplayClip | null {
+  try {
+    const data = JSON.parse(raw) as Partial<FinishReplayClip>;
+    if (
+      !data ||
+      typeof data !== 'object' ||
+      !Array.isArray(data.frames) ||
+      data.frames.length === 0 ||
+      typeof data.startRaceTime !== 'number' ||
+      typeof data.crossRaceTime !== 'number' ||
+      typeof data.endRaceTime !== 'number' ||
+      typeof data.finishZ !== 'number' ||
+      typeof data.finishY !== 'number' ||
+      typeof data.playbackDuration !== 'number'
+    ) {
+      return null;
+    }
+    return data as FinishReplayClip;
+  } catch {
+    return null;
+  }
+}
+
+export interface UploadReplayResult {
+  ok: boolean;
+  replayKey?: string;
+  error?: string;
+}
+
+/**
+ * Uploads a FinishReplayClip to the Worker R2 endpoint for a given matchId.
+ */
+export async function uploadMatchReplay(
+  matchId: string,
+  clip: FinishReplayClip,
+  apiBase = '',
+  fetchImpl: typeof fetch = fetch,
+): Promise<UploadReplayResult> {
+  try {
+    const res = await fetchImpl(`${apiBase}/api/replays/${encodeURIComponent(matchId)}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: serializeReplayClip(clip),
+    });
+    const data = (await res.json().catch(() => ({}))) as { replayKey?: string; error?: string };
+    if (!res.ok) {
+      return { ok: false, error: data.error ?? `HTTP ${res.status}` };
+    }
+    return { ok: true, replayKey: data.replayKey };
+  } catch (err) {
+    return { ok: false, error: err instanceof Error ? err.message : 'Network error' };
+  }
+}
+
+/**
+ * Fetches a stored FinishReplayClip from the Worker R2 endpoint for a given matchId.
+ */
+export async function fetchMatchReplay(
+  matchId: string,
+  apiBase = '',
+  fetchImpl: typeof fetch = fetch,
+): Promise<FinishReplayClip | null> {
+  try {
+    const res = await fetchImpl(`${apiBase}/api/replays/${encodeURIComponent(matchId)}`);
+    if (!res.ok) return null;
+    const text = await res.text();
+    return parseReplayClip(text);
+  } catch {
+    return null;
+  }
+}

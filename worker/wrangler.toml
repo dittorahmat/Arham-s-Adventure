@@ -1,0 +1,25 @@
+name = "arham-adventure-worker"
+main = "src/index.ts"
+compatibility_date = "2025-03-01"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "arham-adventure-db"
+database_id = "83211d97-7034-471d-b8fd-7827f09b9c73"
+migrations_dir = "migrations"
+
+[[durable_objects.bindings]]
+name = "ROOM_DO"
+class_name = "RoomDurableObject"
+
+[[durable_objects.bindings]]
+name = "MATCHMAKER_DO"
+class_name = "MatchmakerDurableObject"
+
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["RoomDurableObject", "MatchmakerDurableObject"]
+
+[[r2_buckets]]
+binding = "REPLAY_BUCKET"
+bucket_name = "arham-adventure-replays"

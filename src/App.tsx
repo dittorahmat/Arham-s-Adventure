@@ -8,6 +8,7 @@ import { OfflineIndicator } from './components/OfflineIndicator';
 import { PlayingHud } from './components/PlayingHud';
 import { ReplayOverlay } from './components/ReplayOverlay';
 import { StatusModals } from './components/StatusModals';
+import { LobbyModal } from './components/LobbyModal';
 import { TitleOverlay } from './components/TitleOverlay';
 import {
   DEFAULT_DIFFICULTY,
@@ -16,6 +17,7 @@ import {
 } from './game/difficulty';
 import { parseGameModeParam } from './game/gameModes';
 import { DEFAULT_GRADE_LEVEL, parseGradeParam } from './game/questions';
+import { loadGuestSession, syncGuestSession } from './game/session';
 import { ReplayHudSnapshot } from './game/replay';
 import { ArhamGameEngine } from './game/ThreeEngine';
 import {
@@ -55,7 +57,11 @@ export default function App() {
   const engineRef = useRef<ArhamGameEngine | null>(null);
 
   const [gameState, setGameState] = useState<GameState>('title');
-  const [selectedGrade, setSelectedGrade] = useState<GradeLevel>(DEFAULT_GRADE_LEVEL);
+  const [nickname, setNickname] = useState<string>(() => loadGuestSession()?.nickname ?? 'Arham');
+  const [lobbyOpen, setLobbyOpen] = useState(false);
+  const [selectedGrade, setSelectedGrade] = useState<GradeLevel>(
+    () => loadGuestSession()?.grade ?? DEFAULT_GRADE_LEVEL,
+  );
   const [selectedDifficulty, setSelectedDifficulty] = useState<DifficultyLevel>(() =>
     loadDifficulty(),
   );
@@ -152,6 +158,7 @@ export default function App() {
   }, []);
 
   const handleStart = useCallback(() => {
+    void syncGuestSession(nickname, selectedGrade);
     setGameOver(null);
     setReplay(null);
     engineRef.current?.startGame(
@@ -214,6 +221,8 @@ export default function App() {
 
       {gameState === 'title' && (
         <TitleOverlay
+          nickname={nickname}
+          onChangeNickname={setNickname}
           selectedGrade={selectedGrade}
           onSelectGrade={handleSelectGrade}
           selectedDifficulty={selectedDifficulty}
@@ -224,6 +233,28 @@ export default function App() {
           selectedSubject={selectedSubject}
           onSelectSubject={handleSelectSubject}
           onStart={handleStart}
+          onOpenLobby={() => setLobbyOpen(true)}
+        />
+      )}
+
+      {gameState === 'title' && (
+        <LobbyModal
+          open={lobbyOpen}
+          playerId={loadGuestSession()?.playerId ?? 'local-guest'}
+          nickname={nickname}
+          grade={selectedGrade}
+          defaultMode={selectedMode}
+          defaultDifficulty={selectedDifficulty}
+          onClose={() => setLobbyOpen(false)}
+          onMatchStart={(room) => {
+            setLobbyOpen(false);
+            handleSelectMode(room.settings.mode);
+            handleSelectDifficulty(room.settings.difficulty);
+            if (room.settings.lockedGrade !== null) {
+              handleSelectGrade(room.settings.lockedGrade);
+            }
+            handleStart();
+          }}
         />
       )}
 

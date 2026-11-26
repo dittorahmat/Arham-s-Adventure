@@ -170,3 +170,89 @@ export function clearLeaderboard(storage?: StorageLike | null): void {
     // Ignore storage errors
   }
 }
+
+export interface GlobalLeaderboardEntry {
+  id: string;
+  playerId?: string;
+  nickname: string;
+  rank: number;
+  score: number;
+  lapTimeSeconds: number;
+  grade?: GradeLevel;
+  mode?: string;
+  difficulty?: string;
+  subject: SubjectFilter;
+  achievedAt: string;
+}
+
+export interface GlobalLeaderboardResult {
+  entries: GlobalLeaderboardEntry[];
+  source: 'global' | 'local';
+}
+
+export async function fetchGlobalLeaderboard(options?: {
+  mode?: string;
+  difficulty?: string;
+  fetcher?: typeof fetch;
+  storage?: StorageLike | null;
+}): Promise<GlobalLeaderboardResult> {
+  const params = new URLSearchParams();
+  if (options?.mode && options.mode !== 'all' && options.mode !== 'random') {
+    params.set('mode', options.mode);
+  }
+  if (options?.difficulty && options.difficulty !== 'all') {
+    params.set('difficulty', options.difficulty);
+  }
+  const qs = params.toString();
+  const url = qs ? `/api/leaderboard?${qs}` : '/api/leaderboard';
+  const fetcher = options?.fetcher ?? (typeof fetch !== 'undefined' ? fetch : undefined);
+
+  if (fetcher) {
+    try {
+      const res = await fetcher(url);
+      if (res.ok) {
+        const data = (await res.json()) as { entries?: unknown[] };
+        if (Array.isArray(data.entries)) {
+          const entries: GlobalLeaderboardEntry[] = data.entries.map((item) => {
+            const row = item as Record<string, unknown>;
+            const grade = sanitizeGrade(row.grade);
+            const subject = VALID_SUBJECTS.includes(row.subject as SubjectFilter)
+              ? (row.subject as SubjectFilter)
+              : 'semua';
+            return {
+              id: String(row.id ?? ''),
+              playerId: typeof row.playerId === 'string' ? row.playerId : undefined,
+              nickname: typeof row.nickname === 'string' && row.nickname ? row.nickname : 'Pemain',
+              rank: Math.max(1, Math.round(Number(row.rank) || 1)),
+              score: Math.max(0, Math.round(Number(row.score) || 0)),
+              lapTimeSeconds: roundTenth(Number(row.lapTimeSeconds) || 0),
+              ...(grade !== undefined ? { grade } : {}),
+              mode: typeof row.mode === 'string' ? row.mode : undefined,
+              difficulty: typeof row.difficulty === 'string' ? row.difficulty : undefined,
+              subject,
+              achievedAt: typeof row.achievedAt === 'string' ? row.achievedAt : new Date().toISOString(),
+            };
+          });
+          return { entries, source: 'global' };
+        }
+      }
+    } catch {
+      // Network error or offline: fall back to localStorage
+    }
+  }
+
+  const localEntries = loadLeaderboard(options?.storage);
+  return {
+    entries: localEntries.map((e) => ({
+      id: e.id,
+      nickname: 'Kamu (Lokal)',
+      rank: e.rank,
+      score: e.score,
+      lapTimeSeconds: e.lapTimeSeconds,
+      ...(e.grade !== undefined ? { grade: e.grade } : {}),
+      subject: e.subject,
+      achievedAt: e.achievedAt,
+    })),
+    source: 'local',
+  };
+}

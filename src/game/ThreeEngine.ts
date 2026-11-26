@@ -28,6 +28,18 @@ import {
   resolveGameMode,
 } from './gameModes';
 import { loadLeaderboard, recordFastestLap, saveLeaderboard } from './leaderboard';
+import type { MultiplayerClient } from './MultiplayerClient';
+import { interpolateRemotePose, type InterpolatedPose, type PlayerPose } from './netSync';
+
+const _interpPoseScratch: InterpolatedPose = { x: 0, y: 0, z: 0, rotY: 0 };
+
+export interface MultiplayerSessionConfig {
+  client: MultiplayerClient;
+  seed: number;
+  matchStartTime: number;
+  localPlayerId: string;
+  remotePlayerIds: string[];
+}
 import {
   CharacterVisualRig,
   createCharacterRig,
@@ -135,6 +147,12 @@ export class ArhamGameEngine {
   private courseGroup = new THREE.Group();
   private course!: CourseLayout;
   private racers: RacerState[] = [];
+  private multiplayerSession: MultiplayerSessionConfig | null = null;
+  private multiplayerFinishSent = false;
+  private remotePoseBuffer = new Map<
+    string,
+    { prev: PlayerPose; next: PlayerPose; receivedAt: number }
+  >();
   private racerRigs: CharacterVisualRig[] = [];
 
   private platformMeshes = new Map<string, THREE.Object3D>();
@@ -365,6 +383,30 @@ export class ArhamGameEngine {
     this.callbacks.onActiveModeChange?.(this.activeMode);
     if (this.gameState === 'title') {
       this.rebuildRace(this.subjectFilter, this.activeMode);
+    }
+  }
+
+  public setMultiplayerSession(session: MultiplayerSessionConfig | null): void {
+    this.multiplayerSession = session;
+    this.multiplayerFinishSent = false;
+    this.remotePoseBuffer.clear();
+  }
+
+  public pushRemotePoses(poses: PlayerPose[]): void {
+    const now = performance.now();
+    for (const pose of poses) {
+      const existing = this.remotePoseBuffer.get(pose.playerId);
+      if (existing) {
+        existing.prev = existing.next;
+        existing.next = pose;
+        existing.receivedAt = now;
+      } else {
+        this.remotePoseBuffer.set(pose.playerId, {
+          prev: pose,
+          next: pose,
+          receivedAt: now,
+        });
+      }
     }
   }
 
@@ -917,6 +959,13 @@ export class ArhamGameEngine {
           const gate = this.course.quizGates[ev.gateIndex];
           this.particleVfx.emitQuizGateClear(ev.x, ev.y, ev.z, ev.firstTry);
           if (ev.isPlayer) {
+            if (this.multiplayerSession && gate) {
+              this.multiplayerSession.client.sendQuizAnswer(
+                ev.gateIndex,
+                gate.question.correctIndex,
+                gate.question.correctIndex
+              );
+            }
             this.sound.playQuizCorrect();
             this.hitstopTimer = 0.042;
             this.cameraTrauma = Math.min(1, this.cameraTrauma + 0.35);
@@ -989,6 +1038,13 @@ export class ArhamGameEngine {
         case 'quiz_wrong': {
           const gate = this.course.quizGates[ev.gateIndex];
           if (ev.isPlayer) {
+            if (this.multiplayerSession && gate) {
+              this.multiplayerSession.client.sendQuizAnswer(
+                ev.gateIndex,
+                ev.doorIndex,
+                gate.question.correctIndex
+              );
+            }
             const streakResult = recordAnswerAttempt(this.achievementProfile, false);
             this.achievementProfile = streakResult.nextProfile;
             saveAchievementProfile(this.achievementProfile);
@@ -1009,6 +1065,9 @@ export class ArhamGameEngine {
         }
         case 'tile_safe':
           if (ev.isPlayer) {
+            if (this.multiplayerSession) {
+              this.multiplayerSession.client.sendTileStep(ev.tileId, true);
+            }
             this.score += 10;
             this.sound.playTileSafe();
             this.particleVfx.emitSimpleBurst(ev.x, ev.y + 0.15, ev.z, 8, [0x22c55e, 0x86efac, 0xfef08a], 4.4, 'spark');
@@ -1018,6 +1077,9 @@ export class ArhamGameEngine {
           }
           break;
         case 'tile_fake':
+          if (ev.isPlayer && this.multiplayerSession) {
+            this.multiplayerSession.client.sendTileStep(ev.tileId, false);
+          }
           if (this.course.mode === 'honey_drop') {
             if (ev.isPlayer) {
               this.sound.playHoneyCrack();
@@ -1760,9 +1822,40 @@ export class ArhamGameEngine {
           const playerInput = this.readPlayerInput();
           stepRacerPhysics(this.racers[0], playerInput, this.course, dt, this.elapsedTime, events);
 
+          if (this.multiplayerSession) {
+            const p0 = this.racers[0];
+            this.multiplayerSession.client.sendPose({
+              x: p0.x,
+              y: p0.y,
+              z: p0.z,
+              vx: p0.vx,
+              vy: p0.vy,
+              vz: p0.vz,
+              rotY: p0.facingAngle,
+              timestamp: Date.now(),
+            });
+            if (p0.finished && !this.multiplayerFinishSent) {
+              this.multiplayerFinishSent = true;
+              this.multiplayerSession.client.sendFinish(p0.finishTime * 1000);
+            }
+          }
+
+          const remoteIds = this.multiplayerSession?.remotePlayerIds;
+          const nowPerf = performance.now();
           for (let i = 1; i < this.racers.length; i++) {
-            const aiIn = computeAiInput(this.racers[i], this.course, this.elapsedTime);
-            stepRacerPhysics(this.racers[i], aiIn, this.course, dt, this.elapsedTime, events);
+            const remoteId = remoteIds?.[i - 1];
+            const buffered = remoteId ? this.remotePoseBuffer.get(remoteId) : undefined;
+            if (buffered) {
+              const alpha = Math.min(1, Math.max(0, (nowPerf - buffered.receivedAt) / 50));
+              interpolateRemotePose(buffered.prev, buffered.next, alpha, _interpPoseScratch);
+              this.racers[i].x = _interpPoseScratch.x;
+              this.racers[i].y = _interpPoseScratch.y;
+              this.racers[i].z = _interpPoseScratch.z;
+              this.racers[i].facingAngle = _interpPoseScratch.rotY;
+            } else {
+              const aiIn = computeAiInput(this.racers[i], this.course, this.elapsedTime);
+              stepRacerPhysics(this.racers[i], aiIn, this.course, dt, this.elapsedTime, events);
+            }
           }
 
           // Capture rolling ~30Hz pose frame for the 5-second finish-line slow-motion replay
