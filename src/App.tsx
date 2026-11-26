@@ -62,7 +62,7 @@ export default function App() {
   const engineRef = useRef<ArhamGameEngine | null>(null);
 
   const [gameState, setGameState] = useState<GameState>('title');
-  const [nickname, setNickname] = useState<string>(() => loadGuestSession()?.nickname ?? 'Arham');
+  const [nickname, setNickname] = useState<string>(() => loadGuestSession()?.nickname ?? '');
   const [guestPlayerId] = useState<string>(
     () => loadGuestSession()?.playerId ?? createOfflineGuestSession('Arham', DEFAULT_GRADE_LEVEL).playerId,
   );

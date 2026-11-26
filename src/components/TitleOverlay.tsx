@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
+import { validateNickname } from '../game/session';
 import { DailyChallengesState, loadDailyChallenges } from '../game/dailyChallenges';
 import { DIFFICULTY_CATALOG, DIFFICULTY_LEVELS } from '../game/difficulty';
 import { GAME_MODE_CATALOG, GAME_MODE_SELECTIONS } from '../game/gameModes';
@@ -111,6 +112,8 @@ export const TitleOverlay: React.FC<TitleOverlayProps> = ({
   onStart,
   onOpenLobby,
 }) => {
+  const nicknameInputRef = useRef<HTMLInputElement | null>(null);
+  const [nicknameError, setNicknameError] = useState<string | null>(null);
   const [showTopScores, setShowTopScores] = useState(false);
   const [topScores, setTopScores] = useState<LeaderboardEntry[]>(() => loadLeaderboard());
   const [showDailyChallenges, setShowDailyChallenges] = useState(false);
@@ -238,14 +241,21 @@ export const TitleOverlay: React.FC<TitleOverlayProps> = ({
               </span>
             </div>
             <input
+              ref={nicknameInputRef}
               id="guest-nickname-input"
               type="text"
               value={nickname}
               maxLength={16}
-              placeholder="Contoh: Arham"
-              onChange={(e) => onChangeNickname(e.target.value)}
+              placeholder="Tulis namamu..."
+              onChange={(e) => {
+                setNicknameError(null);
+                onChangeNickname(e.target.value);
+              }}
               className="w-full rounded-xl border-2 border-[#1e293b] bg-white px-3 py-1.5 font-display text-sm font-bold text-[#1e293b] outline-none focus:border-[#2563eb]"
             />
+            {nicknameError && (
+              <p className="mt-1 text-xs font-bold text-[#dc2626]">{nicknameError}</p>
+            )}
           </div>
 
           {/* Mandatory SD Grade Selector (Kelas 1 - Kelas 6, default Kelas 5) */}
@@ -453,6 +463,11 @@ export const TitleOverlay: React.FC<TitleOverlayProps> = ({
               data-start="true"
               onClick={(e) => {
                 e.currentTarget.blur();
+                if (!validateNickname(nickname).valid) {
+                  setNicknameError('Isi nama panggilanmu dulu ya (minimal 2 huruf)!');
+                  nicknameInputRef.current?.focus();
+                  return;
+                }
                 onStart();
               }}
               className="toy-btn cursor-pointer whitespace-nowrap rounded-2xl border-[3px] border-[#1e293b] bg-[#facc15] px-6 py-3.5 font-display text-xl font-bold tracking-wide text-[#0f172a] focus-visible:outline-4 focus-visible:outline-white sm:px-7 sm:py-4 sm:text-2xl"
@@ -468,6 +483,11 @@ export const TitleOverlay: React.FC<TitleOverlayProps> = ({
                 data-testid="open-lobby"
                 onClick={(e) => {
                   e.currentTarget.blur();
+                  if (!validateNickname(nickname).valid) {
+                    setNicknameError('Isi nama panggilanmu dulu ya (minimal 2 huruf)!');
+                    nicknameInputRef.current?.focus();
+                    return;
+                  }
                   onOpenLobby();
                 }}
                 className="toy-btn flex cursor-pointer items-center gap-2 whitespace-nowrap rounded-2xl border-[3px] border-[#1e293b] bg-emerald-400 px-3.5 py-2.5 font-display text-sm font-bold text-[#0f172a] focus-visible:outline-4 focus-visible:outline-white sm:px-4 sm:py-3 sm:text-base"
