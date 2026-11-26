@@ -16,6 +16,7 @@ import {
 } from './game/difficulty';
 import { parseGameModeParam } from './game/gameModes';
 import { DEFAULT_GRADE_LEVEL, parseGradeParam } from './game/questions';
+import { loadGuestSession, syncGuestSession } from './game/session';
 import { ReplayHudSnapshot } from './game/replay';
 import { ArhamGameEngine } from './game/ThreeEngine';
 import {
@@ -55,7 +56,10 @@ export default function App() {
   const engineRef = useRef<ArhamGameEngine | null>(null);
 
   const [gameState, setGameState] = useState<GameState>('title');
-  const [selectedGrade, setSelectedGrade] = useState<GradeLevel>(DEFAULT_GRADE_LEVEL);
+  const [nickname, setNickname] = useState<string>(() => loadGuestSession()?.nickname ?? 'Arham');
+  const [selectedGrade, setSelectedGrade] = useState<GradeLevel>(
+    () => loadGuestSession()?.grade ?? DEFAULT_GRADE_LEVEL,
+  );
   const [selectedDifficulty, setSelectedDifficulty] = useState<DifficultyLevel>(() =>
     loadDifficulty(),
   );
@@ -152,6 +156,7 @@ export default function App() {
   }, []);
 
   const handleStart = useCallback(() => {
+    void syncGuestSession(nickname, selectedGrade);
     setGameOver(null);
     setReplay(null);
     engineRef.current?.startGame(
@@ -214,6 +219,8 @@ export default function App() {
 
       {gameState === 'title' && (
         <TitleOverlay
+          nickname={nickname}
+          onChangeNickname={setNickname}
           selectedGrade={selectedGrade}
           onSelectGrade={handleSelectGrade}
           selectedDifficulty={selectedDifficulty}

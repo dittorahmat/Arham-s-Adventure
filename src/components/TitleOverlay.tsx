@@ -21,6 +21,8 @@ import { PWAInstallButton } from './PWAInstallButton';
 import { TopScoresModal } from './TopScoresModal';
 
 interface TitleOverlayProps {
+  nickname: string;
+  onChangeNickname: (nickname: string) => void;
   selectedGrade: GradeLevel;
   onSelectGrade: (grade: GradeLevel) => void;
   selectedDifficulty: DifficultyLevel;
@@ -94,6 +96,8 @@ const ModeIcon: React.FC<{ mode: GameModeSelection }> = ({ mode }) => {
 };
 
 export const TitleOverlay: React.FC<TitleOverlayProps> = ({
+  nickname,
+  onChangeNickname,
   selectedGrade,
   onSelectGrade,
   selectedDifficulty,
@@ -223,6 +227,25 @@ export const TitleOverlay: React.FC<TitleOverlayProps> = ({
 
         {/* Grade + Difficulty + Game Mode + Subject Filter Compact Toy Setup Panel */}
         <div className="pointer-events-auto w-full max-w-xl space-y-2 rounded-2xl border-[3px] border-[#1e293b] bg-[#fffdf5]/95 p-2.5 sm:space-y-2.5 sm:p-3 toy-panel">
+          {/* Guest Nickname Input */}
+          <div>
+            <div className="mb-1 flex items-center justify-between text-xs font-bold text-[#334155]">
+              <label htmlFor="guest-nickname-input">Nama Panggilan</label>
+              <span className="text-[11px] font-semibold text-[#64748b]">
+                {nickname.trim().length}/16
+              </span>
+            </div>
+            <input
+              id="guest-nickname-input"
+              type="text"
+              value={nickname}
+              maxLength={16}
+              placeholder="Contoh: Arham"
+              onChange={(e) => onChangeNickname(e.target.value)}
+              className="w-full rounded-xl border-2 border-[#1e293b] bg-white px-3 py-1.5 font-display text-sm font-bold text-[#1e293b] outline-none focus:border-[#2563eb]"
+            />
+          </div>
+
           {/* Mandatory SD Grade Selector (Kelas 1 - Kelas 6, default Kelas 5) */}
           <div>
             <div className="mb-1 flex flex-wrap items-center justify-between gap-x-2 gap-y-0.5 text-xs font-bold text-[#334155]">
