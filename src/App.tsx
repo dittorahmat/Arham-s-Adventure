@@ -17,7 +17,12 @@ import {
 } from './game/difficulty';
 import { parseGameModeParam } from './game/gameModes';
 import { DEFAULT_GRADE_LEVEL, parseGradeParam } from './game/questions';
-import { loadGuestSession, syncGuestSession } from './game/session';
+import {
+  createOfflineGuestSession,
+  loadGuestSession,
+  syncGuestSession,
+} from './game/session';
+import { MultiplayerClient } from './game/MultiplayerClient';
 import { ReplayHudSnapshot } from './game/replay';
 import { ArhamGameEngine } from './game/ThreeEngine';
 import {
@@ -58,6 +63,9 @@ export default function App() {
 
   const [gameState, setGameState] = useState<GameState>('title');
   const [nickname, setNickname] = useState<string>(() => loadGuestSession()?.nickname ?? 'Arham');
+  const [guestPlayerId] = useState<string>(
+    () => loadGuestSession()?.playerId ?? createOfflineGuestSession('Arham', DEFAULT_GRADE_LEVEL).playerId,
+  );
   const [lobbyOpen, setLobbyOpen] = useState(false);
   const [selectedGrade, setSelectedGrade] = useState<GradeLevel>(
     () => loadGuestSession()?.grade ?? DEFAULT_GRADE_LEVEL,
@@ -240,19 +248,33 @@ export default function App() {
       {gameState === 'title' && (
         <LobbyModal
           open={lobbyOpen}
-          playerId={loadGuestSession()?.playerId ?? 'local-guest'}
+          playerId={guestPlayerId}
           nickname={nickname}
           grade={selectedGrade}
           defaultMode={selectedMode}
           defaultDifficulty={selectedDifficulty}
           onClose={() => setLobbyOpen(false)}
-          onMatchStart={(room) => {
+          onMatchStart={(room, ws, meta) => {
             setLobbyOpen(false);
             handleSelectMode(room.settings.mode);
             handleSelectDifficulty(room.settings.difficulty);
             if (room.settings.lockedGrade !== null) {
               handleSelectGrade(room.settings.lockedGrade);
             }
+            const client = new MultiplayerClient({
+              onRaceSnapshot: (poses) => engineRef.current?.pushRemotePoses(poses),
+              onTileStateUpdate: (u) =>
+                engineRef.current?.applyTileStateUpdate(u.tileId, u.state, u.shakeTimer, u.revealPop),
+            });
+            if (ws) {
+              client.attachSocket(ws);
+            }
+            engineRef.current?.setMultiplayerSession({
+              client,
+              localPlayerId: guestPlayerId,
+              seed: meta.seed,
+              matchStartTime: meta.matchStartTime,
+            });
             handleStart();
           }}
         />

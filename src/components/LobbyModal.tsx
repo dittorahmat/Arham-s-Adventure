@@ -19,7 +19,7 @@ interface LobbyModalProps {
   defaultMode: GameModeSelection;
   defaultDifficulty: DifficultyLevel;
   onClose: () => void;
-  onMatchStart: (room: RoomState) => void;
+  onMatchStart: (room: RoomState, ws: WebSocket | null, meta: { seed: number; matchStartTime: number }) => void;
 }
 
 export const LobbyModal: React.FC<LobbyModalProps> = ({
@@ -87,12 +87,25 @@ export const LobbyModal: React.FC<LobbyModalProps> = ({
       try {
         const msg = JSON.parse(String(event.data)) as
           | { type: 'room_state'; state: RoomState }
+          | { type: 'match_start'; seed: number; matchStartTime: number; state: RoomState }
           | { type: 'error'; error: string };
-        if (msg.type === 'room_state') {
+        if (msg.type === 'match_start' && msg.state) {
+          const matchWs = wsRef.current;
+          wsRef.current = null;
+          onMatchStart(msg.state, matchWs, {
+            seed: msg.seed,
+            matchStartTime: msg.matchStartTime,
+          });
+        } else if (msg.type === 'room_state') {
           setRoomState(msg.state);
           setError(null);
           if (msg.state.status === 'playing') {
-            onMatchStart(msg.state);
+            const matchWs = wsRef.current;
+            wsRef.current = null;
+            onMatchStart(msg.state, matchWs, {
+              seed: Date.now(),
+              matchStartTime: Date.now(),
+            });
           }
         } else if (msg.type === 'error') {
           setError(msg.error);
