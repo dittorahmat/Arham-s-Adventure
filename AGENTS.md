@@ -93,6 +93,7 @@ All persistence modules must guard `localStorage` access with `try/catch` and sa
 - When `DISABLE_HMR=true`, restart the dev server after code edits before testing in a browser.
 
 ### Cloudflare Worker, Durable Objects & Multiplayer
+- **Monolith Worker Layout**: `wrangler.toml` lives at the repo root `/` (serving `dist/` via `[assets]` and `worker/src/index.ts`). Keep `--config ../wrangler.toml` on all `worker/package.json` scripts (`dev`, `deploy`, `check`).
 - **Bind Every Durable Object in `wrangler.toml`**: Every Durable Object class exported by `worker/src/index.ts` (e.g. `RoomDurableObject`, `MatchmakerDurableObject`) must have a matching `[[durable_objects.bindings]]` entry and `[[migrations]]` class declaration in `wrangler.toml`.
 - **D1 Match Persistence**: Never gate `persistMatchToD1()` on AI Classmates sending `player_finish`—trigger persistence once all **human** (`!p.isAi`) participants finish (or on match timeout).
 - **No Duplicate `switch` Cases & Shared Request Helpers**: Keep `RoomDurableObject` message handlers free of duplicate `case` clauses, and extract shared request-body validation helpers (e.g. nickname parsing) in `worker/src/index.ts` instead of duplicating them across routes.
