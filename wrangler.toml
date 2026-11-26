@@ -1,12 +1,15 @@
-name = "arham-adventure-worker"
-main = "src/index.ts"
+name = "arhams-adventure"
+main = "worker/src/index.ts"
 compatibility_date = "2025-03-01"
+
+[assets]
+directory = "dist"
 
 [[d1_databases]]
 binding = "DB"
 database_name = "arham-adventure-db"
 database_id = "83211d97-7034-471d-b8fd-7827f09b9c73"
-migrations_dir = "migrations"
+migrations_dir = "worker/migrations"
 
 [[durable_objects.bindings]]
 name = "ROOM_DO"
