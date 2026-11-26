@@ -103,7 +103,7 @@ All persistence modules must guard `localStorage` access with `try/catch` and sa
 ## 5. Verification Checklist Before Finishing Changes
 
 1. Run unit tests: `npx --yes tsx --test src/game/*.test.ts` (all tests must pass).
-2. Run type-check and production build: `npm run lint && npm run build` (zero TypeScript or Vite errors).
+2. Run type-check, worker bundle check, and production build: `npm run lint && npm --prefix worker run check && npm run build` (zero TypeScript, Wrangler, or Vite errors).
 3. For any visual, 3D, layout, or interactive change: restart the dev server and verify both the affected flow and console output (0 runtime errors) in a headless browser before completing the task.
 4. Keep UI copy in natural, kid-friendly **Bahasa Indonesia** consistent with the Indonesian Elementary School (SD Kelas 1–6) theme.
 
