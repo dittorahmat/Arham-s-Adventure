@@ -1077,6 +1077,9 @@ export class ArhamGameEngine {
           }
           break;
         case 'tile_fake':
+          if (ev.isPlayer && this.multiplayerSession) {
+            this.multiplayerSession.client.sendTileStep(ev.tileId, false);
+          }
           if (this.course.mode === 'honey_drop') {
             if (ev.isPlayer) {
               this.sound.playHoneyCrack();

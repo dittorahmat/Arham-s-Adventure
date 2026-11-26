@@ -19,23 +19,43 @@ app.use('/api/*', cors());
 
 app.get('/api/health', (c) => c.json({ ok: true }));
 
+type NicknameParseResult<T extends Record<string, unknown>> =
+  | { ok: true; body: T; nickname: string }
+  | { ok: false; error: string };
+
+async function parseJsonWithNickname<T extends Record<string, unknown>>(
+  req: { json: () => Promise<unknown> },
+  field: keyof T = 'nickname' as keyof T
+): Promise<NicknameParseResult<T>> {
+  let body: T;
+  try {
+    body = (await req.json()) as T;
+  } catch {
+    return { ok: false, error: 'Invalid JSON body' };
+  }
+  const raw = typeof body[field] === 'string' ? (body[field] as string) : '';
+  const check = validateNickname(raw);
+  if (!check.valid) {
+    return { ok: false, error: check.error ?? 'Invalid nickname' };
+  }
+  return { ok: true, body, nickname: check.nickname };
+}
+
 /**
  * POST /api/session
  * Creates or updates an anonymous Guest Player in D1 and returns their session token.
  */
 app.post('/api/session', async (c) => {
-  let body: { nickname?: unknown; grade?: unknown; token?: unknown };
-  try {
-    body = await c.req.json();
-  } catch {
-    return c.json({ error: 'Invalid JSON body' }, 400);
+  const parsed = await parseJsonWithNickname<{
+    nickname?: unknown;
+    grade?: unknown;
+    token?: unknown;
+  }>(c.req);
+  if (!parsed.ok) {
+    return c.json({ error: parsed.error }, 400);
   }
-
-  const rawNickname = typeof body.nickname === 'string' ? body.nickname : '';
-  const check = validateNickname(rawNickname);
-  if (!check.valid) {
-    return c.json({ error: check.error ?? 'Invalid nickname' }, 400);
-  }
+  const { body, nickname } = parsed;
+  const check = { nickname };
 
   const grade = validateGrade(body.grade);
   const existingToken = typeof body.token === 'string' && body.token.length > 0 ? body.token : null;
@@ -88,23 +108,17 @@ app.post('/api/session', async (c) => {
  * Creates a new Private Room in a Durable Object and returns its 6-character code.
  */
 app.post('/api/rooms', async (c) => {
-  let body: {
+  const parsed = await parseJsonWithNickname<{
     hostId?: unknown;
     hostNickname?: unknown;
     hostGrade?: unknown;
     settings?: Partial<RoomSettings>;
-  };
-  try {
-    body = await c.req.json();
-  } catch {
-    return c.json({ error: 'Invalid JSON body' }, 400);
+  }>(c.req, 'hostNickname');
+  if (!parsed.ok) {
+    return c.json({ error: parsed.error }, 400);
   }
-
-  const rawNickname = typeof body.hostNickname === 'string' ? body.hostNickname : '';
-  const nickCheck = validateNickname(rawNickname);
-  if (!nickCheck.valid) {
-    return c.json({ error: nickCheck.error ?? 'Invalid nickname' }, 400);
-  }
+  const { body, nickname } = parsed;
+  const nickCheck = { nickname };
 
   const hostId =
     typeof body.hostId === 'string' && body.hostId.length > 0
@@ -156,23 +170,17 @@ app.get('/api/rooms/:code/ws', async (c) => {
  * Finds an open public Room or creates a new one via MatchmakerDurableObject.
  */
 app.post('/api/quickplay', async (c) => {
-  let body: {
+  const parsed = await parseJsonWithNickname<{
     playerId?: unknown;
     nickname?: unknown;
     grade?: unknown;
     settings?: Partial<RoomSettings>;
-  };
-  try {
-    body = await c.req.json();
-  } catch {
-    return c.json({ error: 'Invalid JSON body' }, 400);
+  }>(c.req);
+  if (!parsed.ok) {
+    return c.json({ error: parsed.error }, 400);
   }
-
-  const rawNickname = typeof body.nickname === 'string' ? body.nickname : '';
-  const nickCheck = validateNickname(rawNickname);
-  if (!nickCheck.valid) {
-    return c.json({ error: nickCheck.error ?? 'Invalid nickname' }, 400);
-  }
+  const { body, nickname } = parsed;
+  const nickCheck = { nickname };
 
   const playerId =
     typeof body.playerId === 'string' && body.playerId.length > 0

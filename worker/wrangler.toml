@@ -12,9 +12,13 @@ migrations_dir = "migrations"
 name = "ROOM_DO"
 class_name = "RoomDurableObject"
 
+[[durable_objects.bindings]]
+name = "MATCHMAKER_DO"
+class_name = "MatchmakerDurableObject"
+
 [[migrations]]
 tag = "v1"
-new_sqlite_classes = ["RoomDurableObject"]
+new_sqlite_classes = ["RoomDurableObject", "MatchmakerDurableObject"]
 
 [[r2_buckets]]
 binding = "REPLAY_BUCKET"

@@ -211,9 +211,11 @@ export class RoomDurableObject implements DurableObject {
             standings: this.finishStandings,
           })
         );
+        const humanCount = this.roomState.participants.filter((p) => !p.isAi).length;
         if (
           !this.matchPersisted &&
-          this.finishStandings.length >= this.roomState.participants.length
+          humanCount > 0 &&
+          this.finishStandings.length >= humanCount
         ) {
           this.matchPersisted = true;
           this.ctx.waitUntil(this.persistMatchToD1());
@@ -273,51 +275,6 @@ export class RoomDurableObject implements DurableObject {
         this.roomState = res.state;
         this.broadcastState();
         this.startSyncedMatch();
-        break;
-      }
-      case 'player_pose': {
-        if (!this.roomState || this.roomState.status !== 'playing') return;
-        const incoming: PlayerPose = {
-          ...msg.pose,
-          playerId,
-        };
-        const prev = this.latestPoses.get(playerId) ?? null;
-        const validated = validatePlayerPoseUpdate(prev, incoming);
-        this.latestPoses.set(playerId, validated.clampedPose);
-        this.broadcastExcept(
-          playerId,
-          JSON.stringify({
-            type: 'race_snapshot',
-            poses: [validated.clampedPose],
-          })
-        );
-        break;
-      }
-      case 'player_finish': {
-        if (!this.roomState || this.roomState.status !== 'playing') return;
-        const participant = this.roomState.participants.find((p) => p.id === playerId);
-        const finishTimeMs = Number.isFinite(msg.finishTimeMs)
-          ? Math.max(0, msg.finishTimeMs)
-          : Math.max(0, Date.now() - (this.matchStartTime ?? Date.now()));
-        this.finishStandings = recordFinishOrder(
-          this.finishStandings,
-          playerId,
-          finishTimeMs,
-          participant?.nickname
-        );
-        this.broadcastAll(
-          JSON.stringify({
-            type: 'finish_standings',
-            standings: this.finishStandings,
-          })
-        );
-        if (
-          !this.matchPersisted &&
-          this.finishStandings.length >= this.roomState.participants.length
-        ) {
-          this.matchPersisted = true;
-          this.ctx.waitUntil(this.persistMatchToD1());
-        }
         break;
       }
       case 'leave': {

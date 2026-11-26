@@ -92,6 +92,12 @@ All persistence modules must guard `localStorage` access with `try/catch` and sa
 - Preserve the `VitePWA` plugin configuration (`manifestFilename: 'manifest.json'`, `registerType: 'autoUpdate'`, `devOptions: { enabled: true, type: 'module' }`, Workbox precache `globPatterns`) and `"vite-plugin-pwa/client"` in `tsconfig.json` so the app remains installable and playable offline.
 - When `DISABLE_HMR=true`, restart the dev server after code edits before testing in a browser.
 
+### Cloudflare Worker, Durable Objects & Multiplayer
+- **Bind Every Durable Object in `wrangler.toml`**: Every Durable Object class exported by `worker/src/index.ts` (e.g. `RoomDurableObject`, `MatchmakerDurableObject`) must have a matching `[[durable_objects.bindings]]` entry and `[[migrations]]` class declaration in `worker/wrangler.toml`.
+- **D1 Match Persistence**: Never gate `persistMatchToD1()` on AI Classmates sending `player_finish`—trigger persistence once all **human** (`!p.isAi`) participants finish (or on match timeout).
+- **No Duplicate `switch` Cases & Shared Request Helpers**: Keep `RoomDurableObject` message handlers free of duplicate `case` clauses, and extract shared request-body validation helpers (e.g. nickname parsing) in `worker/src/index.ts` instead of duplicating them across routes.
+- **UI Button Focus**: Call `e.currentTarget.blur()` on clickable buttons in `LobbyModal.tsx` as well as HUD/title overlays.
+
 ---
 
 ## 5. Verification Checklist Before Finishing Changes
@@ -100,3 +106,19 @@ All persistence modules must guard `localStorage` access with `try/catch` and sa
 2. Run type-check and production build: `npm run lint && npm run build` (zero TypeScript or Vite errors).
 3. For any visual, 3D, layout, or interactive change: restart the dev server and verify both the affected flow and console output (0 runtime errors) in a headless browser before completing the task.
 4. Keep UI copy in natural, kid-friendly **Bahasa Indonesia** consistent with the Indonesian Elementary School (SD Kelas 1–6) theme.
+
+---
+
+## Agent skills
+
+### Issue tracker
+
+Issues and specs are tracked in GitHub Issues (`dittorahmat/Arham-s-Adventure`) via the `gh` CLI. See `docs/agents/issue-tracker.md`.
+
+### Triage labels
+
+Default triage labels (`needs-triage`, `needs-info`, `ready-for-agent`, `ready-for-human`, `wontfix`). See `docs/agents/triage-labels.md`.
+
+### Domain docs
+
+Single-context layout (`GLOSSARY.md` and `docs/adr/` at the repo root). See `docs/agents/domain.md`.
