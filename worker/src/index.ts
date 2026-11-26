@@ -1,9 +1,12 @@
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';
+import { generateRoomCode, isValidRoomCode, normalizeRoomCode, RoomSettings } from '../../src/game/room';
 import { validateGrade, validateNickname } from '../../src/game/session';
+export { RoomDurableObject } from './RoomDurableObject';
 
 export interface Env {
   DB: D1Database;
+  ROOM_DO: DurableObjectNamespace;
 }
 
 const app = new Hono<{ Bindings: Env }>();
@@ -74,6 +77,74 @@ app.post('/api/session', async (c) => {
     },
     201
   );
+});
+
+/**
+ * POST /api/rooms
+ * Creates a new Private Room in a Durable Object and returns its 6-character code.
+ */
+app.post('/api/rooms', async (c) => {
+  let body: {
+    hostId?: unknown;
+    hostNickname?: unknown;
+    hostGrade?: unknown;
+    settings?: Partial<RoomSettings>;
+  };
+  try {
+    body = await c.req.json();
+  } catch {
+    return c.json({ error: 'Invalid JSON body' }, 400);
+  }
+
+  const rawNickname = typeof body.hostNickname === 'string' ? body.hostNickname : '';
+  const nickCheck = validateNickname(rawNickname);
+  if (!nickCheck.valid) {
+    return c.json({ error: nickCheck.error ?? 'Invalid nickname' }, 400);
+  }
+
+  const hostId =
+    typeof body.hostId === 'string' && body.hostId.length > 0
+      ? body.hostId
+      : crypto.randomUUID();
+  const hostGrade = validateGrade(body.hostGrade);
+  const code = generateRoomCode();
+
+  const id = c.env.ROOM_DO.idFromName(code);
+  const stub = c.env.ROOM_DO.get(id);
+
+  const initRes = await stub.fetch('https://room/init', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      code,
+      hostId,
+      hostNickname: nickCheck.nickname,
+      hostGrade,
+      settings: body.settings,
+    }),
+  });
+
+  const data = (await initRes.json()) as { state: unknown };
+  return c.json({ code, state: data.state }, 201);
+});
+
+/**
+ * GET /api/rooms/:code/ws
+ * Upgrades to a WebSocket connection handled by the Room's Durable Object.
+ */
+app.get('/api/rooms/:code/ws', async (c) => {
+  const code = normalizeRoomCode(c.req.param('code'));
+  if (!isValidRoomCode(code)) {
+    return c.json({ error: 'Invalid room code' }, 400);
+  }
+
+  if (c.req.header('Upgrade')?.toLowerCase() !== 'websocket') {
+    return c.json({ error: 'Expected WebSocket upgrade' }, 426);
+  }
+
+  const id = c.env.ROOM_DO.idFromName(code);
+  const stub = c.env.ROOM_DO.get(id);
+  return stub.fetch(c.req.raw);
 });
 
 export default app;

@@ -33,6 +33,7 @@ interface TitleOverlayProps {
   selectedSubject: SubjectFilter;
   onSelectSubject: (subject: SubjectFilter) => void;
   onStart: () => void;
+  onOpenLobby?: () => void;
 }
 
 const SUBJECT_LIST: SubjectFilter[] = ['semua', 'matematika', 'ipa', 'ips', 'bahasa'];
@@ -108,6 +109,7 @@ export const TitleOverlay: React.FC<TitleOverlayProps> = ({
   selectedSubject,
   onSelectSubject,
   onStart,
+  onOpenLobby,
 }) => {
   const [showTopScores, setShowTopScores] = useState(false);
   const [topScores, setTopScores] = useState<LeaderboardEntry[]>(() => loadLeaderboard());
@@ -460,6 +462,19 @@ export const TitleOverlay: React.FC<TitleOverlayProps> = ({
           </div>
 
           <div className="flex flex-wrap items-center gap-2">
+            {onOpenLobby && (
+              <button
+                type="button"
+                data-testid="open-lobby"
+                onClick={(e) => {
+                  e.currentTarget.blur();
+                  onOpenLobby();
+                }}
+                className="toy-btn flex cursor-pointer items-center gap-2 whitespace-nowrap rounded-2xl border-[3px] border-[#1e293b] bg-emerald-400 px-3.5 py-2.5 font-display text-sm font-bold text-[#0f172a] focus-visible:outline-4 focus-visible:outline-white sm:px-4 sm:py-3 sm:text-base"
+              >
+                Mabar
+              </button>
+            )}
             <button
               type="button"
               data-testid="open-top-scores"

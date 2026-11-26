@@ -8,6 +8,7 @@ import { OfflineIndicator } from './components/OfflineIndicator';
 import { PlayingHud } from './components/PlayingHud';
 import { ReplayOverlay } from './components/ReplayOverlay';
 import { StatusModals } from './components/StatusModals';
+import { LobbyModal } from './components/LobbyModal';
 import { TitleOverlay } from './components/TitleOverlay';
 import {
   DEFAULT_DIFFICULTY,
@@ -57,6 +58,7 @@ export default function App() {
 
   const [gameState, setGameState] = useState<GameState>('title');
   const [nickname, setNickname] = useState<string>(() => loadGuestSession()?.nickname ?? 'Arham');
+  const [lobbyOpen, setLobbyOpen] = useState(false);
   const [selectedGrade, setSelectedGrade] = useState<GradeLevel>(
     () => loadGuestSession()?.grade ?? DEFAULT_GRADE_LEVEL,
   );
@@ -231,6 +233,28 @@ export default function App() {
           selectedSubject={selectedSubject}
           onSelectSubject={handleSelectSubject}
           onStart={handleStart}
+          onOpenLobby={() => setLobbyOpen(true)}
+        />
+      )}
+
+      {gameState === 'title' && (
+        <LobbyModal
+          open={lobbyOpen}
+          playerId={loadGuestSession()?.playerId ?? 'local-guest'}
+          nickname={nickname}
+          grade={selectedGrade}
+          defaultMode={selectedMode}
+          defaultDifficulty={selectedDifficulty}
+          onClose={() => setLobbyOpen(false)}
+          onMatchStart={(room) => {
+            setLobbyOpen(false);
+            handleSelectMode(room.settings.mode);
+            handleSelectDifficulty(room.settings.difficulty);
+            if (room.settings.lockedGrade !== null) {
+              handleSelectGrade(room.settings.lockedGrade);
+            }
+            handleStart();
+          }}
         />
       )}
 
