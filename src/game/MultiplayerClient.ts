@@ -1,5 +1,10 @@
-import type { FinishStanding, PlayerPose } from './netSync';
+import type {
+  FinishStanding,
+  PlayerPose,
+  QuizCheckpointOutcome,
+} from './netSync';
 import type { RoomState } from './room';
+import type { TileState } from './types';
 
 export interface MultiplayerMatchStartPayload {
   seed: number;
@@ -7,10 +12,19 @@ export interface MultiplayerMatchStartPayload {
   state: RoomState;
 }
 
+export interface TileStateUpdatePayload {
+  tileId: string;
+  state: TileState;
+  shakeTimer: number;
+  revealPop: number;
+}
+
 export interface MultiplayerClientCallbacks {
   onMatchStart?: (payload: MultiplayerMatchStartPayload) => void;
   onRaceSnapshot?: (poses: PlayerPose[]) => void;
   onFinishStandings?: (standings: FinishStanding[]) => void;
+  onTileStateUpdate?: (payload: TileStateUpdatePayload) => void;
+  onQuizResult?: (outcome: QuizCheckpointOutcome) => void;
   onClose?: () => void;
 }
 
@@ -40,6 +54,15 @@ export class MultiplayerClient {
           this.callbacks.onRaceSnapshot?.(msg.poses);
         } else if (msg.type === 'finish_standings' && Array.isArray(msg.standings)) {
           this.callbacks.onFinishStandings?.(msg.standings);
+        } else if (msg.type === 'tile_state_update' && typeof msg.tileId === 'string') {
+          this.callbacks.onTileStateUpdate?.({
+            tileId: msg.tileId,
+            state: msg.state,
+            shakeTimer: msg.shakeTimer,
+            revealPop: msg.revealPop,
+          });
+        } else if (msg.type === 'quiz_result' && typeof msg.checkpointIndex === 'number') {
+          this.callbacks.onQuizResult?.(msg as QuizCheckpointOutcome);
         }
       } catch {
         // Ignore malformed server frames
@@ -60,6 +83,27 @@ export class MultiplayerClient {
   sendFinish(finishTimeMs: number): void {
     if (!this.ws || this.ws.readyState !== WebSocket.OPEN) return;
     this.ws.send(JSON.stringify({ type: 'player_finish', finishTimeMs }));
+  }
+
+  sendTileStep(tileId: string, isSafe: boolean): void {
+    if (!this.ws || this.ws.readyState !== WebSocket.OPEN) return;
+    this.ws.send(JSON.stringify({ type: 'tile_step', tileId, isSafe }));
+  }
+
+  sendQuizAnswer(
+    checkpointIndex: number,
+    selectedOption: number,
+    correctOption: number
+  ): void {
+    if (!this.ws || this.ws.readyState !== WebSocket.OPEN) return;
+    this.ws.send(
+      JSON.stringify({
+        type: 'quiz_answer',
+        checkpointIndex,
+        selectedOption,
+        correctOption,
+      })
+    );
   }
 
   dispose(): void {

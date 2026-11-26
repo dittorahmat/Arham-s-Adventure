@@ -1,13 +1,16 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
+  applySharedTileStep,
   createSeededRng,
   computeObstaclePhaseOffset,
   computeDeterministicElapsedSec,
   validatePlayerPoseUpdate,
   interpolateRemotePose,
   recordFinishOrder,
+  validateQuizCheckpointAnswer,
 } from './netSync';
+import type { FallingTileDef } from './types';
 
 test('createSeededRng produces identical deterministic sequences for the same seed', () => {
   const rngA = createSeededRng(123456);
@@ -74,4 +77,80 @@ test('recordFinishOrder ranks finishers by finishTimeMs ascending and ignores du
       { playerId: 'p2', rank: 2 },
     ]
   );
+});
+
+test('applySharedTileStep reveals safe tiles, shakes fake tiles, and ignores unknown/already-triggered tiles', () => {
+  const tiles: FallingTileDef[] = [
+    {
+      id: 't_safe',
+      row: 0,
+      col: 0,
+      x: 0,
+      y: 0,
+      z: 0,
+      width: 2,
+      depth: 2,
+      isSafe: true,
+      state: 'hidden',
+      shakeTimer: 0,
+      fallY: 0,
+      fallVelY: 0,
+      revealPop: 0,
+    },
+    {
+      id: 't_fake',
+      row: 0,
+      col: 1,
+      x: 2,
+      y: 0,
+      z: 0,
+      width: 2,
+      depth: 2,
+      isSafe: false,
+      state: 'hidden',
+      shakeTimer: 0,
+      fallY: 0,
+      fallVelY: 0,
+      revealPop: 0,
+    },
+  ];
+
+  const safeRes = applySharedTileStep(tiles, 't_safe');
+  assert.equal(safeRes.updated, true);
+  assert.equal(safeRes.tile?.state, 'safe_revealed');
+  assert.equal(tiles[0].state, 'safe_revealed');
+
+  // Stepping again on an already-revealed tile is a no-op
+  const repeatRes = applySharedTileStep(tiles, 't_safe');
+  assert.equal(repeatRes.updated, false);
+
+  const fakeRes = applySharedTileStep(tiles, 't_fake');
+  assert.equal(fakeRes.updated, true);
+  assert.equal(fakeRes.tile?.state, 'shaking');
+  assert.equal(tiles[1].state, 'shaking');
+
+  const missingRes = applySharedTileStep(tiles, 'non_existent');
+  assert.equal(missingRes.updated, false);
+});
+
+test('validateQuizCheckpointAnswer returns boost and score on correct answer and stun penalty on wrong answer', () => {
+  const correct = validateQuizCheckpointAnswer({
+    checkpointIndex: 0,
+    selectedOption: 2,
+    correctOption: 2,
+  });
+  assert.equal(correct.isCorrect, true);
+  assert.ok(correct.scoreDelta > 0);
+  assert.ok(correct.speedBoostSec > 0);
+  assert.equal(correct.stunSec, 0);
+
+  const wrong = validateQuizCheckpointAnswer({
+    checkpointIndex: 0,
+    selectedOption: 1,
+    correctOption: 2,
+  });
+  assert.equal(wrong.isCorrect, false);
+  assert.equal(wrong.scoreDelta, 0);
+  assert.equal(wrong.speedBoostSec, 0);
+  assert.ok(wrong.stunSec > 0);
 });

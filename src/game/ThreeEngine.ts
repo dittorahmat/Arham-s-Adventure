@@ -959,6 +959,13 @@ export class ArhamGameEngine {
           const gate = this.course.quizGates[ev.gateIndex];
           this.particleVfx.emitQuizGateClear(ev.x, ev.y, ev.z, ev.firstTry);
           if (ev.isPlayer) {
+            if (this.multiplayerSession && gate) {
+              this.multiplayerSession.client.sendQuizAnswer(
+                ev.gateIndex,
+                gate.question.correctIndex,
+                gate.question.correctIndex
+              );
+            }
             this.sound.playQuizCorrect();
             this.hitstopTimer = 0.042;
             this.cameraTrauma = Math.min(1, this.cameraTrauma + 0.35);
@@ -1031,6 +1038,13 @@ export class ArhamGameEngine {
         case 'quiz_wrong': {
           const gate = this.course.quizGates[ev.gateIndex];
           if (ev.isPlayer) {
+            if (this.multiplayerSession && gate) {
+              this.multiplayerSession.client.sendQuizAnswer(
+                ev.gateIndex,
+                ev.doorIndex,
+                gate.question.correctIndex
+              );
+            }
             const streakResult = recordAnswerAttempt(this.achievementProfile, false);
             this.achievementProfile = streakResult.nextProfile;
             saveAchievementProfile(this.achievementProfile);
@@ -1051,6 +1065,9 @@ export class ArhamGameEngine {
         }
         case 'tile_safe':
           if (ev.isPlayer) {
+            if (this.multiplayerSession) {
+              this.multiplayerSession.client.sendTileStep(ev.tileId, true);
+            }
             this.score += 10;
             this.sound.playTileSafe();
             this.particleVfx.emitSimpleBurst(ev.x, ev.y + 0.15, ev.z, 8, [0x22c55e, 0x86efac, 0xfef08a], 4.4, 'spark');

@@ -13,13 +13,15 @@ import {
   updateRoomSettings,
 } from '../../src/game/room';
 import { validateGrade } from '../../src/game/session';
-import type { GradeLevel } from '../../src/game/types';
+import type { GradeLevel, TileState } from '../../src/game/types';
 import {
   FinishStanding,
   PlayerPose,
   recordFinishOrder,
   validatePlayerPoseUpdate,
+  validateQuizCheckpointAnswer,
 } from '../../src/game/netSync';
+import { TILE_FALL_CONSTANTS } from '../../src/game/tileFall';
 
 type ClientMessage =
   | { type: 'update_settings'; settings: Partial<RoomSettings> }
@@ -27,11 +29,23 @@ type ClientMessage =
   | { type: 'start_match' }
   | { type: 'player_pose'; pose: Omit<PlayerPose, 'playerId'> }
   | { type: 'player_finish'; finishTimeMs: number }
+  | { type: 'tile_step'; tileId: string; isSafe: boolean }
+  | {
+      type: 'quiz_answer';
+      checkpointIndex: number;
+      selectedOption: number;
+      correctOption: number;
+    }
   | { type: 'leave' };
 
 export class RoomDurableObject implements DurableObject {
   private roomState: RoomState | null = null;
   private sessions = new Map<string, WebSocket>();
+  private tileStates = new Map<
+    string,
+    { state: TileState; shakeTimer: number; revealPop: number }
+  >();
+  private quizScores = new Map<string, number>();
   private matchSeed: number | null = null;
   private matchStartTime: number | null = null;
   private latestPoses = new Map<string, PlayerPose>();
@@ -191,6 +205,45 @@ export class RoomDurableObject implements DurableObject {
           JSON.stringify({
             type: 'finish_standings',
             standings: this.finishStandings,
+          })
+        );
+        break;
+      }
+      case 'tile_step': {
+        if (!this.roomState || this.roomState.status !== 'playing') return;
+        if (!msg.tileId || this.tileStates.has(msg.tileId)) return;
+        const nextState = msg.isSafe
+          ? { state: 'safe_revealed' as TileState, shakeTimer: 0, revealPop: 1 }
+          : {
+              state: 'shaking' as TileState,
+              shakeTimer: TILE_FALL_CONSTANTS.shakeDuration,
+              revealPop: 0,
+            };
+        this.tileStates.set(msg.tileId, nextState);
+        this.broadcastAll(
+          JSON.stringify({
+            type: 'tile_state_update',
+            tileId: msg.tileId,
+            ...nextState,
+          })
+        );
+        break;
+      }
+      case 'quiz_answer': {
+        if (!this.roomState || this.roomState.status !== 'playing') return;
+        const outcome = validateQuizCheckpointAnswer({
+          checkpointIndex: msg.checkpointIndex,
+          selectedOption: msg.selectedOption,
+          correctOption: msg.correctOption,
+        });
+        if (outcome.scoreDelta > 0) {
+          const prevScore = this.quizScores.get(playerId) ?? 0;
+          this.quizScores.set(playerId, prevScore + outcome.scoreDelta);
+        }
+        socket.send(
+          JSON.stringify({
+            type: 'quiz_result',
+            ...outcome,
           })
         );
         break;

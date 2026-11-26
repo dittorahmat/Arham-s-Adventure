@@ -4,6 +4,9 @@
  * Zero React / DOM / Three.js dependencies.
  */
 
+import { triggerTileStep } from './tileFall';
+import type { FallingTileDef, TileState } from './types';
+
 export interface PlayerPose {
   playerId: string;
   x: number;
@@ -155,4 +158,85 @@ export function recordFinishOrder(
     ...entry,
     rank: idx + 1,
   }));
+}
+
+export interface SharedTileStepResult {
+  updated: boolean;
+  tile?: {
+    id: string;
+    state: TileState;
+    shakeTimer: number;
+    revealPop: number;
+  };
+}
+
+/**
+ * Validates and applies a shared tile_fall step event to the course's tile array.
+ * Returns { updated: true, tile } when a hidden tile transitions state.
+ */
+export function applySharedTileStep(
+  tiles: FallingTileDef[],
+  tileId: string
+): SharedTileStepResult {
+  if (!tileId) return { updated: false };
+  const tile = tiles.find((t) => t.id === tileId);
+  if (!tile) return { updated: false };
+
+  const outcome = triggerTileStep(tile);
+  if (outcome === 'none') return { updated: false };
+
+  return {
+    updated: true,
+    tile: {
+      id: tile.id,
+      state: tile.state,
+      shakeTimer: tile.shakeTimer,
+      revealPop: tile.revealPop,
+    },
+  };
+}
+
+export interface QuizCheckpointAnswerInput {
+  checkpointIndex: number;
+  selectedOption: number;
+  correctOption: number;
+}
+
+export interface QuizCheckpointOutcome {
+  checkpointIndex: number;
+  isCorrect: boolean;
+  scoreDelta: number;
+  speedBoostSec: number;
+  stunSec: number;
+}
+
+/**
+ * Validates an individual player's Checkpoint Quiz answer and returns
+ * the authoritative score delta and speed boost / stun penalty outcome.
+ */
+export function validateQuizCheckpointAnswer(
+  input: QuizCheckpointAnswerInput
+): QuizCheckpointOutcome {
+  const isCorrect =
+    Number.isInteger(input.selectedOption) &&
+    input.selectedOption >= 0 &&
+    input.selectedOption === input.correctOption;
+
+  if (isCorrect) {
+    return {
+      checkpointIndex: input.checkpointIndex,
+      isCorrect: true,
+      scoreDelta: 100,
+      speedBoostSec: 2.0,
+      stunSec: 0,
+    };
+  }
+
+  return {
+    checkpointIndex: input.checkpointIndex,
+    isCorrect: false,
+    scoreDelta: 0,
+    speedBoostSec: 0,
+    stunSec: 1.5,
+  };
 }
