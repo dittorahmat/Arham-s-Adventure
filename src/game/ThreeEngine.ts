@@ -74,6 +74,7 @@ import {
   createTrackTileTexture,
 } from './textures';
 import { stepFallingTiles } from './tileFall';
+import { resolvePhysicsEventHaptic, triggerHapticFeedback } from './touchControls';
 import {
   AchievementId,
   AchievementProfile,
@@ -833,6 +834,11 @@ export class ArhamGameEngine {
     let forceHud = false;
 
     for (const ev of events) {
+      const haptic = resolvePhysicsEventHaptic(ev.type, ev.isPlayer, this.course.mode);
+      if (haptic) {
+        triggerHapticFeedback(haptic);
+      }
+
       switch (ev.type) {
         case 'jump':
           if (ev.isPlayer) {

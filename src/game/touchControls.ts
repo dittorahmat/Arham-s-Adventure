@@ -125,12 +125,54 @@ export function saveTouchControlsPreference(pref: TouchControlsPreference): void
   }
 }
 
-export type HapticAction = 'jump' | 'dive';
+export type HapticAction =
+  | 'jump'
+  | 'dive'
+  | 'bumper'
+  | 'sweeper'
+  | 'laser_hit'
+  | 'tile_fake'
+  | 'tile_crack'
+  | 'quiz_correct'
+  | 'quiz_wrong';
 
 export const HAPTIC_PATTERNS: Record<HapticAction, number | number[]> = {
   jump: 18,
   dive: [22, 28, 35],
+  bumper: 45,
+  sweeper: [75, 35, 55],
+  laser_hit: [35, 25, 35, 25, 60],
+  tile_fake: [40, 25, 30],
+  tile_crack: 24,
+  quiz_correct: [25, 35, 55],
+  quiz_wrong: [90, 45, 90],
 };
+
+export function resolvePhysicsEventHaptic(
+  eventType: string,
+  isPlayer: boolean,
+  mode?: string,
+): HapticAction | null {
+  if (!isPlayer) {
+    return null;
+  }
+  switch (eventType) {
+    case 'bumper':
+      return 'bumper';
+    case 'sweeper':
+      return 'sweeper';
+    case 'laser_hit':
+      return 'laser_hit';
+    case 'tile_fake':
+      return mode === 'honey_drop' ? 'tile_crack' : 'tile_fake';
+    case 'quiz_correct':
+      return 'quiz_correct';
+    case 'quiz_wrong':
+      return 'quiz_wrong';
+    default:
+      return null;
+  }
+}
 
 export interface VibratorLike {
   vibrate?: (pattern: number | number[]) => boolean;

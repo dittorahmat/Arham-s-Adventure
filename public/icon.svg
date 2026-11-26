@@ -1,0 +1,94 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <linearGradient id="skyBg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#38bdf8" />
+      <stop offset="62%" stop-color="#60a5fa" />
+      <stop offset="100%" stop-color="#2563eb" />
+    </linearGradient>
+    <linearGradient id="trackStripe" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#bae6fd" stop-opacity="0.45" />
+      <stop offset="100%" stop-color="#ffffff" stop-opacity="0.1" />
+    </linearGradient>
+  </defs>
+
+  <!-- Full Rounded Toy Sky Badge -->
+  <rect x="16" y="16" width="480" height="480" rx="108" fill="url(#skyBg)" stroke="#1e293b" stroke-width="20" />
+
+  <!-- Subtle Floating Cloud Accents -->
+  <g fill="#ffffff" opacity="0.88">
+    <circle cx="118" cy="140" r="28" />
+    <circle cx="150" cy="134" r="34" />
+    <circle cx="182" cy="144" r="24" />
+    <circle cx="378" cy="158" r="24" />
+    <circle cx="404" cy="152" r="28" />
+  </g>
+
+  <!-- Stylized Sky Track Horizon Arc -->
+  <path d="M56 382 Q256 312 456 382 L456 436 Q256 384 56 436 Z" fill="url(#trackStripe)" />
+
+  <!-- Golden Top Star Crest -->
+  <g transform="translate(256 126)">
+    <circle cx="0" cy="0" r="56" fill="#facc15" stroke="#1e293b" stroke-width="14" />
+    <polygon
+      points="0,-34 10,-11 35,-11 15,4 22,29 0,14 -22,29 -15,4 -35,-11 -10,-11"
+      fill="#fffbeb"
+      stroke="#1e293b"
+      stroke-width="7"
+      stroke-linejoin="round"
+    />
+  </g>
+
+  <!-- Royal Blue Ribbon Shield -->
+  <path
+    d="M62 198 L452 178 L434 320 L48 340 Z"
+    fill="#1d4ed8"
+    stroke="#1e293b"
+    stroke-width="16"
+    stroke-linejoin="round"
+  />
+  <path d="M76 212 L436 194 L422 306 L64 324 Z" fill="#2563eb" />
+
+  <!-- Bold Hero Initial Monogram "AA" / "ARHAM" -->
+  <text
+    x="256"
+    y="286"
+    text-anchor="middle"
+    font-family="Fredoka, Arial Rounded MT Bold, sans-serif"
+    font-weight="800"
+    font-size="102"
+    fill="#fef08a"
+    stroke="#1e293b"
+    stroke-width="18"
+    paint-order="stroke fill"
+    letter-spacing="2"
+  >
+    ARHAM
+  </text>
+
+  <!-- Red Adventure Plaque -->
+  <rect
+    x="104"
+    y="324"
+    width="304"
+    height="84"
+    rx="26"
+    fill="#ef4444"
+    stroke="#1e293b"
+    stroke-width="14"
+  />
+  <text
+    x="256"
+    y="381"
+    text-anchor="middle"
+    font-family="Fredoka, Arial Rounded MT Bold, sans-serif"
+    font-weight="800"
+    font-size="44"
+    fill="#ffffff"
+    stroke="#1e293b"
+    stroke-width="9"
+    paint-order="stroke fill"
+    letter-spacing="2"
+  >
+    KUIS SD
+  </text>
+</svg>

@@ -3,7 +3,9 @@ import test from 'node:test';
 import {
   combineJoystickWithAutoRun,
   computeJoystickVector,
+  HapticAction,
   HAPTIC_PATTERNS,
+  resolvePhysicsEventHaptic,
   resolveTouchControlsVisible,
   triggerHapticFeedback,
 } from './touchControls';
@@ -101,7 +103,7 @@ test('triggerHapticFeedback fails safely when navigator.vibrate is unsupported o
   assert.equal(triggerHapticFeedback('jump', null), false);
   assert.equal(triggerHapticFeedback('dive', {}), false);
   assert.equal(
-    triggerHapticFeedback('jump', {
+    triggerHapticFeedback('quiz_wrong', {
       vibrate: () => {
         throw new Error('Blocked by browser policy');
       },
@@ -109,4 +111,61 @@ test('triggerHapticFeedback fails safely when navigator.vibrate is unsupported o
     false,
   );
 });
+
+test('triggerHapticFeedback supports distinct patterns for collisions and quiz outcomes', () => {
+  const actions: HapticAction[] = [
+    'bumper',
+    'sweeper',
+    'laser_hit',
+    'tile_fake',
+    'tile_crack',
+    'quiz_correct',
+    'quiz_wrong',
+  ];
+  const calls: Array<number | number[]> = [];
+  const mockNav = {
+    vibrate: (pattern: VibratePattern) => {
+      calls.push(pattern as number | number[]);
+      return true;
+    },
+  };
+
+  for (const action of actions) {
+    assert.equal(triggerHapticFeedback(action, mockNav), true);
+  }
+
+  assert.deepEqual(
+    calls,
+    actions.map((a) => HAPTIC_PATTERNS[a]),
+  );
+
+  // Ensure every collision/quiz haptic pattern has a distinct tactile signature
+  const serialized = new Set(calls.map((pattern) => JSON.stringify(pattern)));
+  assert.equal(serialized.size, actions.length);
+});
+
+test('resolvePhysicsEventHaptic maps player collision and quiz events while ignoring bots', () => {
+  assert.equal(resolvePhysicsEventHaptic('bumper', true, 'classic'), 'bumper');
+  assert.equal(resolvePhysicsEventHaptic('sweeper', true, 'classic'), 'sweeper');
+  assert.equal(resolvePhysicsEventHaptic('laser_hit', true, 'laser_dash'), 'laser_hit');
+  assert.equal(resolvePhysicsEventHaptic('tile_fake', true, 'tile_fall'), 'tile_fake');
+  assert.equal(resolvePhysicsEventHaptic('tile_fake', true, 'honey_drop'), 'tile_crack');
+  assert.equal(resolvePhysicsEventHaptic('quiz_correct', true, 'classic'), 'quiz_correct');
+  assert.equal(resolvePhysicsEventHaptic('quiz_wrong', true, 'classic'), 'quiz_wrong');
+
+  // Non-collision / non-quiz or already touch-triggered events should not double-vibrate
+  assert.equal(resolvePhysicsEventHaptic('jump', true, 'classic'), null);
+  assert.equal(resolvePhysicsEventHaptic('dive', true, 'classic'), null);
+  assert.equal(resolvePhysicsEventHaptic('star', true, 'classic'), null);
+  assert.equal(resolvePhysicsEventHaptic('land', true, 'classic'), null);
+
+  // AI bot events must never trigger player device vibration
+  assert.equal(resolvePhysicsEventHaptic('bumper', false, 'classic'), null);
+  assert.equal(resolvePhysicsEventHaptic('sweeper', false, 'classic'), null);
+  assert.equal(resolvePhysicsEventHaptic('laser_hit', false, 'laser_dash'), null);
+  assert.equal(resolvePhysicsEventHaptic('tile_fake', false, 'tile_fall'), null);
+  assert.equal(resolvePhysicsEventHaptic('quiz_correct', false, 'classic'), null);
+  assert.equal(resolvePhysicsEventHaptic('quiz_wrong', false, 'classic'), null);
+});
+
 

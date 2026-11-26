@@ -17,6 +17,7 @@ import {
 } from '../game/types';
 import { ArhamSprite } from './ArhamSprite';
 import { DailyChallengesModal } from './DailyChallengesModal';
+import { PWAInstallButton } from './PWAInstallButton';
 import { TopScoresModal } from './TopScoresModal';
 
 interface TitleOverlayProps {
@@ -490,6 +491,8 @@ export const TitleOverlay: React.FC<TitleOverlayProps> = ({
                 {dailyDoneCount}/{dailyTotalCount}
               </span>
             </button>
+
+            <PWAInstallButton />
           </div>
         </div>
       </div>

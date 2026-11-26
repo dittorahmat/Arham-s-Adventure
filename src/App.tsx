@@ -4,6 +4,7 @@
  */
 
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { OfflineIndicator } from './components/OfflineIndicator';
 import { PlayingHud } from './components/PlayingHud';
 import { ReplayOverlay } from './components/ReplayOverlay';
 import { StatusModals } from './components/StatusModals';
@@ -255,6 +256,8 @@ export default function App() {
           onWatchReplay={handleWatchReplay}
         />
       )}
+
+      <OfflineIndicator />
     </main>
   );
 }

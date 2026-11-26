@@ -6,9 +6,9 @@ Engineering guidelines and architectural invariants for AI coding agents working
 
 ## 1. Project Overview
 
-**Arham's Adventure** is a client-side 3D *Stumble Guys*-style educational obstacle-course race game built with **React 19, TypeScript, Tailwind CSS v4, Three.js, and Vite 8**. Players race 5 AI classmates across five playable modes (`classic`, `tile_fall`, `ice_slide`, `laser_dash`, `honey_drop`) with **`random` ("Mode Acak")** as the default selection, while answering Indonesian Elementary School (SD Kelas 1–6, defaulting to Kelas 5) quiz questions.
+**Arham's Adventure** is a client-side 3D *Stumble Guys*-style educational obstacle-course race game and **Progressive Web App (PWA)** built with **React 19, TypeScript, Tailwind CSS v4, Three.js, Vite 8, and `vite-plugin-pwa`**. Players race 5 AI classmates across five playable modes (`classic`, `tile_fall`, `ice_slide`, `laser_dash`, `honey_drop`) with **`random` ("Mode Acak")** as the default selection, choose a persisted **Difficulty** (`easy`, `medium`, `hard`) that scales obstacle speeds and quiz complexity, and answer Indonesian Elementary School (SD Kelas 1–6, defaulting to Kelas 5) quiz questions.
 
-All 3D geometry, textures (`CanvasTexture`), particle systems (`InstancedMesh`), and audio/music (Web Audio API) are **100% procedural**—there are no external image, model, or audio asset fetches.
+All 3D geometry, textures (`CanvasTexture`), particle systems (`InstancedMesh`), and audio/music (Web Audio API) are **100% procedural**—there are no external image, model, or audio asset fetches (only local static PWA app icons in `public/`).
 
 ---
 
@@ -23,7 +23,7 @@ npm run dev
 # Type-check (strict TypeScript check; configured as the lint script)
 npm run lint
 
-# Production bundle build
+# Production bundle build (also generates dist/manifest.json & Workbox dist/sw.js)
 npm run build
 
 # Run all pure logic unit tests (Node's built-in test runner via tsx)
@@ -39,14 +39,18 @@ npx --yes tsx --test src/game/*.test.ts
 Keep simulation/domain logic decoupled from React UI and Three.js rendering:
 
 - **`src/game/*.ts` (Pure Logic Modules — zero React / DOM / Three.js dependencies)**:
-  - `physics.ts`, `gameModes.ts`, `tileFall.ts`, `courseData.ts`, `questions.ts`, `replay.ts`, `particlePresets.ts`, `musicTempo.ts`, `achievements.ts`, `leaderboard.ts`, `dailyChallenges.ts`, `touchControls.ts`, `spriteMood.ts`, `types.ts`.
+  - `physics.ts`, `gameModes.ts`, `difficulty.ts`, `tileFall.ts`, `courseData.ts`, `questions.ts`, `replay.ts`, `particlePresets.ts`, `musicTempo.ts`, `achievements.ts`, `leaderboard.ts`, `dailyChallenges.ts`, `touchControls.ts`, `spriteMood.ts`, `pwa.ts`, `types.ts`.
   - Every new gameplay rule, math helper, state transition, or storage parser should live in a pure module with a sibling `*.test.ts` file tested via `node:test` + `node:assert/strict`.
 - **`src/game/ThreeEngine.ts` + `models.ts` + `textures.ts` + `particles.ts` + `audio.ts`**:
-  - Owns the Three.js `WebGLRenderer`, scene graph, instanced meshes, animation loop, keyboard/virtual input buffers, and procedural Web Audio synthesizer.
+  - Owns the Three.js `WebGLRenderer`, scene graph, instanced meshes, animation loop, keyboard/virtual input buffers, procedural Web Audio synthesizer, and collision/quiz haptic triggers.
   - Emits throttled `HudSnapshot` updates (~10Hz or on discrete score/quiz events) to React via callbacks.
+- **`src/hooks/*.ts` (Browser Lifecycle Hooks)**:
+  - `usePWAInstall.ts` (tracks `beforeinstallprompt`, `appinstalled`, standalone mode, and iOS install hints) and `useOnlineStatus.ts` (tracks `navigator.onLine` / `online` / `offline` events).
 - **`src/components/*.tsx` (Thin Presentation Layer)**:
-  - `TitleOverlay.tsx`, `PlayingHud.tsx`, `ReplayOverlay.tsx`, `TouchControls.tsx`, `StatusModals.tsx`, `AchievementBadges.tsx`, `TopScoresModal.tsx`, `DailyChallengesModal.tsx`, `ArhamSprite.tsx`.
+  - `TitleOverlay.tsx`, `PlayingHud.tsx`, `ReplayOverlay.tsx`, `TouchControls.tsx`, `StatusModals.tsx`, `AchievementBadges.tsx`, `TopScoresModal.tsx`, `DailyChallengesModal.tsx`, `ArhamSprite.tsx`, `PWAInstallButton.tsx`, `OfflineIndicator.tsx`.
   - Never run simulation ticks or `requestAnimationFrame` loops inside React components.
+- **`public/` (Static PWA Assets)**:
+  - `icon.svg`, `icon-maskable.svg`, `pwa-192x192.png`, `pwa-512x512.png`, `pwa-maskable-512x512.png`, `apple-touch-icon.png`.
 
 ---
 
@@ -65,22 +69,27 @@ Keep simulation/domain logic decoupled from React UI and Three.js rendering:
 1. **State Mirroring**: Always keep `document.body.dataset.state` synced to `'title' | 'playing' | 'paused' | 'replay' | 'gameover'`.
 2. **Start & Testability Hooks**:
    - Keep `data-start="true"` on the primary start CTA.
-   - Preserve URL query hooks: `?autostart=1`, `?grade=<1..6>`, `?mode=<random|classic|tile_fall|ice_slide|laser_dash|honey_drop>`, `?preview_replay=1`, and `?preview_gameover=1`.
+   - Preserve URL query hooks: `?autostart=1`, `?grade=<1..6>`, `?difficulty=<easy|medium|hard>`, `?mode=<random|classic|tile_fall|ice_slide|laser_dash|honey_drop>`, `?preview_replay=1`, and `?preview_gameover=1`.
    - Call `e.currentTarget.blur()` on clickable HUD/title buttons so pressing `Space` during gameplay jumps instead of re-clicking focused buttons.
 3. **Input Safety**: Always clear held keyboard/touch inputs on `window` `blur`, `visibilitychange` (hidden), pause, and restart. Never use `window.alert` or `window.open`.
-4. **Mobile Touch & Haptics**: Guard `navigator.vibrate()` calls through `triggerHapticFeedback()` in `src/game/touchControls.ts` so unsupported browsers (e.g., iOS Safari / desktop) fail silently without throwing.
+4. **Mobile Touch & Haptics**:
+   - Guard **all** `navigator.vibrate()` calls through `triggerHapticFeedback()` in `src/game/touchControls.ts` so unsupported browsers (e.g., iOS Safari / desktop / restricted policies) fail silently without throwing.
+   - `TouchControls.tsx` triggers `jump` and `dive` haptics on touch press.
+   - `ArhamGameEngine.processEvents()` maps player-only (`ev.isPlayer === true`) collision events (`bumper`, `sweeper`, `laser_hit`, `tile_fake` / `tile_crack`) and quiz answer outcomes (`quiz_correct`, `quiz_wrong`) via `resolvePhysicsEventHaptic()` and invokes `triggerHapticFeedback()`. Never vibrate for AI bot events.
 
 ### Persistence (`localStorage`)
 All persistence modules must guard `localStorage` access with `try/catch` and safely recover from corrupted JSON:
 - Best score: `arham_adventure_best_score_v1` (`ThreeEngine.ts`)
+- Difficulty selection: `arham_adventure_difficulty_v1` (`difficulty.ts`)
 - Achievements profile: `achievements.ts`
 - Top 5 fastest laps: `leaderboard.ts`
 - Daily challenges (auto-reset by local `YYYY-MM-DD`): `dailyChallenges.ts`
 - Touch controls visibility override: `touchControls.ts`
 
-### Dev Server & Vite Configuration
+### Dev Server, PWA & Vite Configuration
 - Keep `server.allowedHosts: true as const` in `vite.config.ts` so Vite 8 accepts proxied preview hostnames.
 - Do not modify the `DISABLE_HMR` handling in `vite.config.ts` or remove the `copy-unbundled-src-assets` plugin.
+- Preserve the `VitePWA` plugin configuration (`manifestFilename: 'manifest.json'`, `registerType: 'autoUpdate'`, `devOptions: { enabled: true, type: 'module' }`, Workbox precache `globPatterns`) and `"vite-plugin-pwa/client"` in `tsconfig.json` so the app remains installable and playable offline.
 - When `DISABLE_HMR=true`, restart the dev server after code edits before testing in a browser.
 
 ---
