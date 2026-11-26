@@ -14,16 +14,28 @@ import {
 } from '../../src/game/room';
 import { validateGrade } from '../../src/game/session';
 import type { GradeLevel } from '../../src/game/types';
+import {
+  FinishStanding,
+  PlayerPose,
+  recordFinishOrder,
+  validatePlayerPoseUpdate,
+} from '../../src/game/netSync';
 
 type ClientMessage =
   | { type: 'update_settings'; settings: Partial<RoomSettings> }
   | { type: 'set_ready'; isReady: boolean }
   | { type: 'start_match' }
+  | { type: 'player_pose'; pose: Omit<PlayerPose, 'playerId'> }
+  | { type: 'player_finish'; finishTimeMs: number }
   | { type: 'leave' };
 
 export class RoomDurableObject implements DurableObject {
   private roomState: RoomState | null = null;
   private sessions = new Map<string, WebSocket>();
+  private matchSeed: number | null = null;
+  private matchStartTime: number | null = null;
+  private latestPoses = new Map<string, PlayerPose>();
+  private finishStandings: FinishStanding[] = [];
 
   constructor(private readonly ctx: DurableObjectState) {}
 
@@ -142,6 +154,45 @@ export class RoomDurableObject implements DurableObject {
         }
         this.roomState = res.state;
         this.broadcastState();
+        this.startSyncedMatch();
+        break;
+      }
+      case 'player_pose': {
+        if (!this.roomState || this.roomState.status !== 'playing') return;
+        const incoming: PlayerPose = {
+          ...msg.pose,
+          playerId,
+        };
+        const prev = this.latestPoses.get(playerId) ?? null;
+        const validated = validatePlayerPoseUpdate(prev, incoming);
+        this.latestPoses.set(playerId, validated.clampedPose);
+        this.broadcastExcept(
+          playerId,
+          JSON.stringify({
+            type: 'race_snapshot',
+            poses: [validated.clampedPose],
+          })
+        );
+        break;
+      }
+      case 'player_finish': {
+        if (!this.roomState || this.roomState.status !== 'playing') return;
+        const participant = this.roomState.participants.find((p) => p.id === playerId);
+        const finishTimeMs = Number.isFinite(msg.finishTimeMs)
+          ? Math.max(0, msg.finishTimeMs)
+          : Math.max(0, Date.now() - (this.matchStartTime ?? Date.now()));
+        this.finishStandings = recordFinishOrder(
+          this.finishStandings,
+          playerId,
+          finishTimeMs,
+          participant?.nickname
+        );
+        this.broadcastAll(
+          JSON.stringify({
+            type: 'finish_standings',
+            standings: this.finishStandings,
+          })
+        );
         break;
       }
       case 'set_ready': {
@@ -157,6 +208,45 @@ export class RoomDurableObject implements DurableObject {
         }
         this.roomState = res.state;
         this.broadcastState();
+        this.startSyncedMatch();
+        break;
+      }
+      case 'player_pose': {
+        if (!this.roomState || this.roomState.status !== 'playing') return;
+        const incoming: PlayerPose = {
+          ...msg.pose,
+          playerId,
+        };
+        const prev = this.latestPoses.get(playerId) ?? null;
+        const validated = validatePlayerPoseUpdate(prev, incoming);
+        this.latestPoses.set(playerId, validated.clampedPose);
+        this.broadcastExcept(
+          playerId,
+          JSON.stringify({
+            type: 'race_snapshot',
+            poses: [validated.clampedPose],
+          })
+        );
+        break;
+      }
+      case 'player_finish': {
+        if (!this.roomState || this.roomState.status !== 'playing') return;
+        const participant = this.roomState.participants.find((p) => p.id === playerId);
+        const finishTimeMs = Number.isFinite(msg.finishTimeMs)
+          ? Math.max(0, msg.finishTimeMs)
+          : Math.max(0, Date.now() - (this.matchStartTime ?? Date.now()));
+        this.finishStandings = recordFinishOrder(
+          this.finishStandings,
+          playerId,
+          finishTimeMs,
+          participant?.nickname
+        );
+        this.broadcastAll(
+          JSON.stringify({
+            type: 'finish_standings',
+            standings: this.finishStandings,
+          })
+        );
         break;
       }
       case 'leave': {
@@ -176,13 +266,28 @@ export class RoomDurableObject implements DurableObject {
       if (res.ok) {
         this.roomState = res.state;
         this.broadcastState();
+        this.startSyncedMatch();
       }
     }
   }
 
-  private broadcastState(): void {
+  private startSyncedMatch(): void {
     if (!this.roomState) return;
-    const payload = JSON.stringify({ type: 'room_state', state: this.roomState });
+    this.matchSeed = (Math.floor(Math.random() * 0x7fffffff) + 1) >>> 0;
+    this.matchStartTime = Date.now();
+    this.latestPoses.clear();
+    this.finishStandings = [];
+    this.broadcastAll(
+      JSON.stringify({
+        type: 'match_start',
+        seed: this.matchSeed,
+        matchStartTime: this.matchStartTime,
+        state: this.roomState,
+      })
+    );
+  }
+
+  private broadcastAll(payload: string): void {
     for (const ws of this.sessions.values()) {
       try {
         ws.send(payload);
@@ -190,5 +295,21 @@ export class RoomDurableObject implements DurableObject {
         // Ignore closed sockets; close listener cleans up
       }
     }
+  }
+
+  private broadcastExcept(excludePlayerId: string, payload: string): void {
+    for (const [id, ws] of this.sessions.entries()) {
+      if (id === excludePlayerId) continue;
+      try {
+        ws.send(payload);
+      } catch {
+        // Ignore closed sockets; close listener cleans up
+      }
+    }
+  }
+
+  private broadcastState(): void {
+    if (!this.roomState) return;
+    this.broadcastAll(JSON.stringify({ type: 'room_state', state: this.roomState }));
   }
 }
