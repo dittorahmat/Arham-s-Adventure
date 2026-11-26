@@ -1,6 +1,7 @@
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';
 import { generateRoomCode, isValidRoomCode, normalizeRoomCode, RoomSettings } from '../../src/game/room';
+import { parseReplayClip } from '../../src/game/replay';
 import { validateGrade, validateNickname } from '../../src/game/session';
 export { MatchmakerDurableObject } from './MatchmakerDurableObject';
 export { RoomDurableObject } from './RoomDurableObject';
@@ -9,6 +10,7 @@ export interface Env {
   DB: D1Database;
   ROOM_DO: DurableObjectNamespace;
   MATCHMAKER_DO: DurableObjectNamespace;
+  REPLAY_BUCKET: R2Bucket;
 }
 
 const app = new Hono<{ Bindings: Env }>();
@@ -244,6 +246,54 @@ app.get('/api/leaderboard', async (c) => {
     .all();
 
   return c.json({ entries: result.results ?? [] });
+});
+
+/**
+ * POST /api/replays/:matchId
+ * Validates and stores a FinishReplayClip JSON in R2 and records replay_key on the match in D1.
+ */
+app.post('/api/replays/:matchId', async (c) => {
+  const matchId = c.req.param('matchId')?.trim();
+  if (!matchId) {
+    return c.json({ error: 'matchId is required' }, 400);
+  }
+
+  const rawBody = await c.req.text();
+  const clip = parseReplayClip(rawBody);
+  if (!clip) {
+    return c.json({ error: 'Invalid replay clip payload' }, 400);
+  }
+
+  const replayKey = `replays/${matchId}.json`;
+  await c.env.REPLAY_BUCKET.put(replayKey, rawBody, {
+    httpMetadata: { contentType: 'application/json' },
+  });
+
+  await c.env.DB.prepare('UPDATE matches SET replay_key = ? WHERE id = ?')
+    .bind(replayKey, matchId)
+    .run();
+
+  return c.json({ ok: true, replayKey }, 201);
+});
+
+/**
+ * GET /api/replays/:matchId
+ * Fetches a stored FinishReplayClip JSON from R2.
+ */
+app.get('/api/replays/:matchId', async (c) => {
+  const matchId = c.req.param('matchId')?.trim();
+  if (!matchId) {
+    return c.json({ error: 'matchId is required' }, 400);
+  }
+
+  const replayKey = `replays/${matchId}.json`;
+  const object = await c.env.REPLAY_BUCKET.get(replayKey);
+  if (!object) {
+    return c.json({ error: 'Replay not found' }, 404);
+  }
+
+  const body = await object.text();
+  return c.text(body, 200, { 'Content-Type': 'application/json' });
 });
 
 export default app;

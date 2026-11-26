@@ -4,12 +4,16 @@ import { createInitialRacers } from './courseData';
 import {
   computeReplayCameraPose,
   createSyntheticFinishReplayClip,
+  fetchMatchReplay,
   getReplayCrossMarkerPct,
   lerpAngle,
   mapReplayPlaybackTime,
+  parseReplayClip,
   REPLAY_DURATION_SECONDS,
   ReplayRecorder,
   sampleReplayFrame,
+  serializeReplayClip,
+  uploadMatchReplay,
 } from './replay';
 
 test('ReplayRecorder captures frames at interval and builds a 5-second finish clip with follow-through', () => {
@@ -109,4 +113,55 @@ test('computeReplayCameraPose sweeps smoothly and stays inside track column clea
     assert.ok(Math.abs(pose.posX) <= 6.5, `posX ${pose.posX} must stay clear of arch pillars`);
     assert.ok(pose.posY >= 2.8, `posY ${pose.posY} must stay above finish deck`);
   }
+});
+
+test('serializeReplayClip and parseReplayClip round-trip a FinishReplayClip and reject invalid payloads', () => {
+  const racers = createInitialRacers();
+  const clip = createSyntheticFinishReplayClip(-180, 1.1, 41, racers);
+
+  const json = serializeReplayClip(clip);
+  const parsed = parseReplayClip(json);
+  assert.ok(parsed !== null);
+  assert.equal(parsed.frames.length, clip.frames.length);
+  assert.equal(parsed.finishZ, clip.finishZ);
+  assert.equal(parsed.playbackDuration, clip.playbackDuration);
+
+  assert.equal(parseReplayClip('not-json'), null);
+  assert.equal(parseReplayClip('{"frames":[]}'), null);
+  assert.equal(parseReplayClip('{"frames":"bad"}'), null);
+});
+
+test('uploadMatchReplay and fetchMatchReplay interact with /api/replays/:matchId', async () => {
+  const racers = createInitialRacers();
+  const clip = createSyntheticFinishReplayClip(-180, 1.1, 41, racers);
+
+  let storedBody = '';
+  const mockFetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
+    const url = String(input);
+    if (init?.method === 'POST' && url === '/api/replays/match-123') {
+      storedBody = String(init.body ?? '');
+      return new Response(JSON.stringify({ ok: true, replayKey: 'replays/match-123.json' }), {
+        status: 201,
+        headers: { 'Content-Type': 'application/json' },
+      });
+    }
+    if ((!init?.method || init.method === 'GET') && url === '/api/replays/match-123') {
+      return new Response(storedBody, {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      });
+    }
+    return new Response(JSON.stringify({ error: 'Not found' }), { status: 404 });
+  }) as typeof fetch;
+
+  const uploadRes = await uploadMatchReplay('match-123', clip, '', mockFetch);
+  assert.equal(uploadRes.ok, true);
+  assert.equal(uploadRes.replayKey, 'replays/match-123.json');
+
+  const fetched = await fetchMatchReplay('match-123', '', mockFetch);
+  assert.ok(fetched !== null);
+  assert.equal(fetched.frames.length, clip.frames.length);
+
+  const missing = await fetchMatchReplay('missing-id', '', mockFetch);
+  assert.equal(missing, null);
 });

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { GAME_MODE_CATALOG } from '../game/gameModes';
 import { GRADE_META } from '../game/questions';
 import { ReplayHudSnapshot } from '../game/replay';
@@ -6,9 +6,17 @@ import { ReplayHudSnapshot } from '../game/replay';
 interface ReplayOverlayProps {
   replay: ReplayHudSnapshot;
   onSkip: () => void;
+  matchId?: string;
+  onSaveReplay?: (matchId: string) => Promise<boolean> | boolean;
 }
 
-export const ReplayOverlay: React.FC<ReplayOverlayProps> = ({ replay, onSkip }) => {
+export const ReplayOverlay: React.FC<ReplayOverlayProps> = ({
+  replay,
+  onSkip,
+  matchId,
+  onSaveReplay,
+}) => {
+  const [saveState, setSaveState] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
   const modeMeta = GAME_MODE_CATALOG[replay.mode];
   const gradeMeta = GRADE_META[replay.grade];
   const speedText = `${replay.speedFactor.toFixed(1)}× SLOW-MO`;
@@ -122,6 +130,35 @@ export const ReplayOverlay: React.FC<ReplayOverlayProps> = ({ replay, onSkip }) 
               />
             </div>
           </div>
+
+          {/* Optional Save Replay to R2 CTA (only when matchId is present) */}
+          {matchId && onSaveReplay && (
+            <button
+              type="button"
+              data-testid="save-replay"
+              disabled={saveState === 'saving' || saveState === 'saved'}
+              onClick={async (e) => {
+                e.currentTarget.blur();
+                if (saveState === 'saving' || saveState === 'saved') return;
+                setSaveState('saving');
+                try {
+                  const ok = await onSaveReplay(matchId);
+                  setSaveState(ok ? 'saved' : 'error');
+                } catch {
+                  setSaveState('error');
+                }
+              }}
+              className="toy-btn shrink-0 cursor-pointer whitespace-nowrap rounded-xl border-[3px] border-[#1e293b] bg-[#38bdf8] px-3.5 py-2 font-display text-sm font-bold text-[#0f172a] disabled:cursor-default disabled:opacity-75 focus-visible:outline-4 focus-visible:outline-white sm:px-4 sm:py-2.5 sm:text-base"
+            >
+              {saveState === 'saving'
+                ? 'Menyimpan...'
+                : saveState === 'saved'
+                  ? 'Tersimpan ✓'
+                  : saveState === 'error'
+                    ? 'Coba Lagi'
+                    : 'Simpan Replay'}
+            </button>
+          )}
 
           {/* Primary Skip CTA */}
           <button
