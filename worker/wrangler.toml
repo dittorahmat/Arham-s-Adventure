@@ -5,7 +5,7 @@ compatibility_date = "2025-03-01"
 [[d1_databases]]
 binding = "DB"
 database_name = "arham-adventure-db"
-database_id = "00000000-0000-0000-0000-000000000000"
+database_id = "83211d97-7034-471d-b8fd-7827f09b9c73"
 migrations_dir = "migrations"
 
 [[durable_objects.bindings]]
