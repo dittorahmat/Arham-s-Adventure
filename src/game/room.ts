@@ -2,6 +2,7 @@ import type { DifficultyLevel, GameModeSelection, GradeLevel } from './types';
 
 export const ROOM_MAX_SLOTS = 6;
 export const ROOM_CODE_LENGTH = 6;
+export const PUBLIC_COUNTDOWN_MS = 10_000;
 
 const ROOM_CODE_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
 const ROOM_CODE_REGEX = /^[A-Z0-9]{6}$/;
@@ -28,6 +29,8 @@ export interface RoomState {
   code: string;
   status: RoomStatus;
   hostId: string;
+  isPublic?: boolean;
+  countdownEndsAt?: number;
   settings: RoomSettings;
   participants: RoomParticipant[];
   createdAt: number;
@@ -63,6 +66,7 @@ export function createRoomState(params: {
   hostId: string;
   hostNickname: string;
   hostGrade: GradeLevel;
+  isPublic?: boolean;
   settings?: Partial<RoomSettings>;
   now?: number;
 }): RoomState {
@@ -72,6 +76,7 @@ export function createRoomState(params: {
     code: normalizeRoomCode(params.code),
     status: 'lobby',
     hostId: params.hostId,
+    isPublic: Boolean(params.isPublic),
     settings: {
       mode: params.settings?.mode ?? 'random',
       difficulty: params.settings?.difficulty ?? 'medium',
@@ -96,7 +101,8 @@ export function joinRoom(
   state: RoomState,
   player: { id: string; nickname: string; grade: GradeLevel }
 ): RoomActionResult {
-  if (state.status !== 'lobby') {
+  const canJoinCountdown = Boolean(state.isPublic) && state.status === 'countdown';
+  if (state.status !== 'lobby' && !canJoinCountdown) {
     return { ok: false, state, error: 'Match already started' };
   }
 
@@ -203,6 +209,29 @@ export function setParticipantReady(state: RoomState, playerId: string, isReady:
   };
 }
 
+function fillAiClassmates(
+  participants: RoomParticipant[],
+  lockedGrade: GradeLevel | null
+): RoomParticipant[] {
+  const filled = [...participants];
+  let aiIdx = 0;
+  while (filled.length < ROOM_MAX_SLOTS) {
+    const slotIndex = filled.length;
+    const name = AI_CLASSMATE_NAMES[aiIdx % AI_CLASSMATE_NAMES.length];
+    aiIdx++;
+    filled.push({
+      id: `ai_${slotIndex}`,
+      nickname: `${name} (Bot)`,
+      grade: lockedGrade ?? 5,
+      isHost: false,
+      isReady: true,
+      isAi: true,
+      slotIndex,
+    });
+  }
+  return filled;
+}
+
 export function startRoomMatch(
   state: RoomState,
   requesterId: string,
@@ -216,23 +245,6 @@ export function startRoomMatch(
     return { ok: false, state, error: 'Only host can start the match' };
   }
 
-  const filled = [...state.participants];
-  let aiIdx = 0;
-  while (filled.length < ROOM_MAX_SLOTS) {
-    const slotIndex = filled.length;
-    const name = AI_CLASSMATE_NAMES[aiIdx % AI_CLASSMATE_NAMES.length];
-    aiIdx++;
-    filled.push({
-      id: `ai_${slotIndex}`,
-      nickname: `${name} (Bot)`,
-      grade: state.settings.lockedGrade ?? 5,
-      isHost: false,
-      isReady: true,
-      isAi: true,
-      slotIndex,
-    });
-  }
-
   return {
     ok: true,
     state: {
@@ -240,7 +252,53 @@ export function startRoomMatch(
       status: 'playing',
       matchStartTime: now,
       seed,
-      participants: filled,
+      participants: fillAiClassmates(state.participants, state.settings.lockedGrade),
+    },
+  };
+}
+
+export function startPublicCountdown(
+  state: RoomState,
+  params: { now?: number; durationMs?: number } = {}
+): RoomActionResult {
+  if (!state.isPublic) {
+    return { ok: false, state, error: 'Countdown is only for public rooms' };
+  }
+  if (state.status !== 'lobby') {
+    return { ok: false, state, error: 'Room is not in lobby' };
+  }
+  const now = params.now ?? Date.now();
+  const durationMs = params.durationMs ?? PUBLIC_COUNTDOWN_MS;
+  return {
+    ok: true,
+    state: {
+      ...state,
+      status: 'countdown',
+      countdownEndsAt: now + durationMs,
+    },
+  };
+}
+
+export function completePublicCountdown(
+  state: RoomState,
+  params: { now?: number; seed?: number } = {}
+): RoomActionResult {
+  if (!state.isPublic) {
+    return { ok: false, state, error: 'Only public rooms can auto-start' };
+  }
+  if (state.status !== 'countdown' && state.status !== 'lobby') {
+    return { ok: false, state, error: 'Match already started' };
+  }
+  const now = params.now ?? Date.now();
+  const seed = params.seed ?? Math.floor(Math.random() * 1_000_000);
+  return {
+    ok: true,
+    state: {
+      ...state,
+      status: 'playing',
+      matchStartTime: now,
+      seed,
+      participants: fillAiClassmates(state.participants, state.settings.lockedGrade),
     },
   };
 }

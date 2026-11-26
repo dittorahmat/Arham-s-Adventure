@@ -37,7 +37,22 @@ export const LobbyModal: React.FC<LobbyModalProps> = ({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+  const [countdownSec, setCountdownSec] = useState<number | null>(null);
   const wsRef = useRef<WebSocket | null>(null);
+
+  useEffect(() => {
+    if (!roomState?.countdownEndsAt || roomState.status !== 'countdown') {
+      setCountdownSec(null);
+      return;
+    }
+    const update = () => {
+      const remaining = Math.max(0, Math.ceil((roomState.countdownEndsAt! - Date.now()) / 1000));
+      setCountdownSec(remaining);
+    };
+    update();
+    const timer = window.setInterval(update, 250);
+    return () => window.clearInterval(timer);
+  }, [roomState?.countdownEndsAt, roomState?.status]);
 
   useEffect(() => {
     if (!open && wsRef.current) {
@@ -130,6 +145,38 @@ export const LobbyModal: React.FC<LobbyModalProps> = ({
     }
   };
 
+  const handleQuickPlay = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await fetch('/api/quickplay', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          playerId,
+          nickname,
+          grade,
+          settings: {
+            mode: defaultMode,
+            difficulty: defaultDifficulty,
+            lockedGrade: null,
+          },
+        }),
+      });
+      if (!res.ok) {
+        const errData = (await res.json().catch(() => ({}))) as { error?: string };
+        setError(errData.error ?? 'Gagal mencari room Quick Play');
+        setLoading(false);
+        return;
+      }
+      const data = (await res.json()) as { code: string };
+      connectWebSocket(data.code);
+    } catch {
+      setError('Tidak dapat terhubung ke server.');
+      setLoading(false);
+    }
+  };
+
   const handleJoinRoom = (e: React.FormEvent) => {
     e.preventDefault();
     const normalized = normalizeRoomCode(joinCode);
@@ -202,6 +249,18 @@ export const LobbyModal: React.FC<LobbyModalProps> = ({
               disabled={loading}
               onClick={(e) => {
                 e.currentTarget.blur();
+                void handleQuickPlay();
+              }}
+              className="w-full rounded-2xl border-3 border-slate-900 bg-amber-400 py-3 text-base font-black text-slate-900 shadow-[0_4px_0_#0f172a] hover:bg-amber-300 disabled:opacity-60"
+            >
+              {loading ? 'Mencari Lawan...' : 'Main Cepat (Quick Play)'}
+            </button>
+
+            <button
+              type="button"
+              disabled={loading}
+              onClick={(e) => {
+                e.currentTarget.blur();
                 void handleCreateRoom();
               }}
               className="w-full rounded-2xl border-3 border-slate-900 bg-emerald-400 py-3 text-base font-black text-slate-900 shadow-[0_4px_0_#0f172a] hover:bg-emerald-300 disabled:opacity-60"
@@ -235,6 +294,16 @@ export const LobbyModal: React.FC<LobbyModalProps> = ({
           </div>
         ) : (
           <div className="space-y-4">
+            {roomState.isPublic && roomState.status === 'countdown' && (
+              <div className="rounded-2xl border-2 border-slate-900 bg-sky-100 px-4 py-2.5 text-center">
+                <div className="text-xs font-black uppercase text-sky-900">
+                  Antrean Quick Play
+                </div>
+                <div className="text-sm font-bold text-slate-800">
+                  Mulai otomatis dalam {countdownSec ?? 0} detik (slot kosong diisi AI Classmate)
+                </div>
+              </div>
+            )}
             <div className="flex items-center justify-between rounded-2xl border-2 border-slate-900 bg-amber-100 px-4 py-2.5">
               <div>
                 <div className="text-[11px] font-bold uppercase text-amber-800">Kode Room</div>

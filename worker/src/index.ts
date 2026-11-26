@@ -2,11 +2,13 @@ import { Hono } from 'hono';
 import { cors } from 'hono/cors';
 import { generateRoomCode, isValidRoomCode, normalizeRoomCode, RoomSettings } from '../../src/game/room';
 import { validateGrade, validateNickname } from '../../src/game/session';
+export { MatchmakerDurableObject } from './MatchmakerDurableObject';
 export { RoomDurableObject } from './RoomDurableObject';
 
 export interface Env {
   DB: D1Database;
   ROOM_DO: DurableObjectNamespace;
+  MATCHMAKER_DO: DurableObjectNamespace;
 }
 
 const app = new Hono<{ Bindings: Env }>();
@@ -145,6 +147,52 @@ app.get('/api/rooms/:code/ws', async (c) => {
   const id = c.env.ROOM_DO.idFromName(code);
   const stub = c.env.ROOM_DO.get(id);
   return stub.fetch(c.req.raw);
+});
+
+/**
+ * POST /api/quickplay
+ * Finds an open public Room or creates a new one via MatchmakerDurableObject.
+ */
+app.post('/api/quickplay', async (c) => {
+  let body: {
+    playerId?: unknown;
+    nickname?: unknown;
+    grade?: unknown;
+    settings?: Partial<RoomSettings>;
+  };
+  try {
+    body = await c.req.json();
+  } catch {
+    return c.json({ error: 'Invalid JSON body' }, 400);
+  }
+
+  const rawNickname = typeof body.nickname === 'string' ? body.nickname : '';
+  const nickCheck = validateNickname(rawNickname);
+  if (!nickCheck.valid) {
+    return c.json({ error: nickCheck.error ?? 'Invalid nickname' }, 400);
+  }
+
+  const playerId =
+    typeof body.playerId === 'string' && body.playerId.length > 0
+      ? body.playerId
+      : crypto.randomUUID();
+  const grade = validateGrade(body.grade);
+
+  const id = c.env.MATCHMAKER_DO.idFromName('global');
+  const stub = c.env.MATCHMAKER_DO.get(id);
+  const res = await stub.fetch('https://matchmaker/match', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      playerId,
+      nickname: nickCheck.nickname,
+      grade,
+      settings: body.settings,
+    }),
+  });
+
+  const data = (await res.json()) as { code: string; isNew: boolean };
+  return c.json(data, res.status as 200 | 201);
 });
 
 export default app;

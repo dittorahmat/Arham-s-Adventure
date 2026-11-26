@@ -1,10 +1,14 @@
 import {
+  completePublicCountdown,
   createRoomState,
   joinRoom,
   leaveRoom,
+  PUBLIC_COUNTDOWN_MS,
+  ROOM_MAX_SLOTS,
   RoomSettings,
   RoomState,
   setParticipantReady,
+  startPublicCountdown,
   startRoomMatch,
   updateRoomSettings,
 } from '../../src/game/room';
@@ -32,17 +36,30 @@ export class RoomDurableObject implements DurableObject {
         hostId: string;
         hostNickname: string;
         hostGrade: GradeLevel;
+        isPublic?: boolean;
         settings?: Partial<RoomSettings>;
       };
 
-      this.roomState = createRoomState({
+      let state = createRoomState({
         code: body.code,
         hostId: body.hostId,
         hostNickname: body.hostNickname,
         hostGrade: validateGrade(body.hostGrade),
+        isPublic: body.isPublic,
         settings: body.settings,
       });
 
+      if (body.isPublic) {
+        const countdownRes = startPublicCountdown(state, { durationMs: PUBLIC_COUNTDOWN_MS });
+        if (countdownRes.ok) {
+          state = countdownRes.state;
+          if (state.countdownEndsAt) {
+            await this.ctx.storage.setAlarm(state.countdownEndsAt);
+          }
+        }
+      }
+
+      this.roomState = state;
       return Response.json({ state: this.roomState }, { status: 201 });
     }
 
@@ -60,6 +77,17 @@ export class RoomDurableObject implements DurableObject {
         return Response.json({ error: joinRes.error }, { status: 409 });
       }
       this.roomState = joinRes.state;
+
+      if (
+        this.roomState.isPublic &&
+        this.roomState.status === 'countdown' &&
+        this.roomState.participants.length >= ROOM_MAX_SLOTS
+      ) {
+        const completeRes = completePublicCountdown(this.roomState);
+        if (completeRes.ok) {
+          this.roomState = completeRes.state;
+        }
+      }
 
       const pair = new WebSocketPair();
       const [client, server] = Object.values(pair);
@@ -80,7 +108,10 @@ export class RoomDurableObject implements DurableObject {
 
       server.addEventListener('close', () => {
         this.sessions.delete(playerId);
-        if (this.roomState && this.roomState.status === 'lobby') {
+        if (
+          this.roomState &&
+          (this.roomState.status === 'lobby' || this.roomState.status === 'countdown')
+        ) {
           this.roomState = leaveRoom(this.roomState, playerId);
           this.broadcastState();
         }
@@ -134,6 +165,17 @@ export class RoomDurableObject implements DurableObject {
         socket.close(1000, 'Left room');
         this.broadcastState();
         break;
+      }
+    }
+  }
+
+  async alarm(): Promise<void> {
+    if (!this.roomState) return;
+    if (this.roomState.isPublic && this.roomState.status === 'countdown') {
+      const res = completePublicCountdown(this.roomState);
+      if (res.ok) {
+        this.roomState = res.state;
+        this.broadcastState();
       }
     }
   }

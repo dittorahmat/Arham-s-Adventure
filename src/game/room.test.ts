@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import {
+  completePublicCountdown,
   createRoomState,
   generateRoomCode,
   isValidRoomCode,
@@ -9,6 +10,7 @@ import {
   normalizeRoomCode,
   ROOM_CODE_LENGTH,
   ROOM_MAX_SLOTS,
+  startPublicCountdown,
   startRoomMatch,
   updateRoomSettings,
 } from './room';
@@ -130,4 +132,35 @@ test('startRoomMatch fills remaining slots with AI classmates and transitions to
   assert.equal(hostStart.state.seed, 12345);
   assert.equal(hostStart.state.participants.length, ROOM_MAX_SLOTS);
   assert.equal(hostStart.state.participants.filter((p) => p.isAi).length, 4);
+});
+
+test('public room supports countdown, late joins during countdown, and AI auto-fill on completion', () => {
+  const room = createRoomState({
+    code: 'PUB123',
+    hostId: 'p1',
+    hostNickname: 'Arham',
+    hostGrade: 5,
+    isPublic: true,
+    now: 1000,
+  });
+  assert.equal(room.isPublic, true);
+
+  const countdownRes = startPublicCountdown(room, { now: 2000, durationMs: 10000 });
+  assert.equal(countdownRes.ok, true);
+  assert.equal(countdownRes.state.status, 'countdown');
+  assert.equal(countdownRes.state.countdownEndsAt, 12000);
+
+  // Another player can join while public room is in countdown
+  const joinRes = joinRoom(countdownRes.state, { id: 'p2', nickname: 'Siti', grade: 5 });
+  assert.equal(joinRes.ok, true);
+  assert.equal(joinRes.state.participants.length, 2);
+
+  // Completing countdown fills remaining 4 slots with AI Classmates and starts match
+  const completeRes = completePublicCountdown(joinRes.state, { now: 12000, seed: 999 });
+  assert.equal(completeRes.ok, true);
+  assert.equal(completeRes.state.status, 'playing');
+  assert.equal(completeRes.state.matchStartTime, 12000);
+  assert.equal(completeRes.state.seed, 999);
+  assert.equal(completeRes.state.participants.length, ROOM_MAX_SLOTS);
+  assert.equal(completeRes.state.participants.filter((p) => p.isAi).length, 4);
 });
