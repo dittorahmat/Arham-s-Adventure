@@ -195,4 +195,55 @@ app.post('/api/quickplay', async (c) => {
   return c.json(data, res.status as 200 | 201);
 });
 
+/**
+ * GET /api/leaderboard
+ * Returns top global scores from D1, optionally filtered by mode and difficulty.
+ */
+app.get('/api/leaderboard', async (c) => {
+  const mode = c.req.query('mode');
+  const difficulty = c.req.query('difficulty');
+  const rawLimit = Number(c.req.query('limit') ?? 20);
+  const limit = Number.isFinite(rawLimit) ? Math.min(50, Math.max(1, Math.round(rawLimit))) : 20;
+
+  const conditions: string[] = [];
+  const bindings: unknown[] = [];
+
+  if (mode && mode !== 'all' && mode !== 'random') {
+    conditions.push('m.mode = ?');
+    bindings.push(mode);
+  }
+  if (difficulty && difficulty !== 'all') {
+    conditions.push('m.difficulty = ?');
+    bindings.push(difficulty);
+  }
+
+  const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
+  const sql = `
+    SELECT
+      mp.id AS id,
+      mp.player_id AS playerId,
+      mp.nickname AS nickname,
+      mp.rank AS rank,
+      mp.score AS score,
+      mp.lap_time_seconds AS lapTimeSeconds,
+      mp.grade AS grade,
+      m.mode AS mode,
+      m.difficulty AS difficulty,
+      m.subject AS subject,
+      m.finished_at AS achievedAt
+    FROM match_participants mp
+    INNER JOIN matches m ON m.id = mp.match_id
+    ${whereClause}
+    ORDER BY mp.lap_time_seconds ASC, mp.score DESC, m.finished_at ASC
+    LIMIT ?
+  `;
+  bindings.push(limit);
+
+  const result = await c.env.DB.prepare(sql)
+    .bind(...bindings)
+    .all();
+
+  return c.json({ entries: result.results ?? [] });
+});
+
 export default app;

@@ -50,8 +50,12 @@ export class RoomDurableObject implements DurableObject {
   private matchStartTime: number | null = null;
   private latestPoses = new Map<string, PlayerPose>();
   private finishStandings: FinishStanding[] = [];
+  private matchPersisted = false;
 
-  constructor(private readonly ctx: DurableObjectState) {}
+  constructor(
+    private readonly ctx: DurableObjectState,
+    private readonly env?: { DB?: D1Database }
+  ) {}
 
   async fetch(request: Request): Promise<Response> {
     const url = new URL(request.url);
@@ -207,6 +211,13 @@ export class RoomDurableObject implements DurableObject {
             standings: this.finishStandings,
           })
         );
+        if (
+          !this.matchPersisted &&
+          this.finishStandings.length >= this.roomState.participants.length
+        ) {
+          this.matchPersisted = true;
+          this.ctx.waitUntil(this.persistMatchToD1());
+        }
         break;
       }
       case 'tile_step': {
@@ -300,6 +311,13 @@ export class RoomDurableObject implements DurableObject {
             standings: this.finishStandings,
           })
         );
+        if (
+          !this.matchPersisted &&
+          this.finishStandings.length >= this.roomState.participants.length
+        ) {
+          this.matchPersisted = true;
+          this.ctx.waitUntil(this.persistMatchToD1());
+        }
         break;
       }
       case 'leave': {
@@ -330,6 +348,7 @@ export class RoomDurableObject implements DurableObject {
     this.matchStartTime = Date.now();
     this.latestPoses.clear();
     this.finishStandings = [];
+    this.matchPersisted = false;
     this.broadcastAll(
       JSON.stringify({
         type: 'match_start',
@@ -338,6 +357,56 @@ export class RoomDurableObject implements DurableObject {
         state: this.roomState,
       })
     );
+  }
+
+  private async persistMatchToD1(): Promise<void> {
+    if (!this.env?.DB || !this.roomState || this.finishStandings.length === 0) return;
+
+    const matchId = crypto.randomUUID();
+    const startedAt = new Date(this.matchStartTime ?? Date.now()).toISOString();
+    const { code, settings, participants } = this.roomState;
+
+    try {
+      const statements: D1PreparedStatement[] = [
+        this.env.DB.prepare(
+          'INSERT INTO matches (id, room_code, mode, difficulty, subject, seed, started_at) VALUES (?, ?, ?, ?, ?, ?, ?)'
+        ).bind(
+          matchId,
+          code,
+          settings.mode,
+          settings.difficulty,
+          'semua',
+          this.matchSeed ?? 0,
+          startedAt
+        ),
+      ];
+
+      for (const standing of this.finishStandings) {
+        const participant = participants.find((p) => p.id === standing.playerId);
+        const score = this.quizScores.get(standing.playerId) ?? 0;
+        const lapTimeSeconds = Math.max(0.1, Math.round((standing.finishTimeMs / 1000) * 10) / 10);
+        const grade = participant?.grade ?? 5;
+
+        statements.push(
+          this.env.DB.prepare(
+            'INSERT INTO match_participants (id, match_id, player_id, nickname, rank, score, lap_time_seconds, grade) VALUES (?, ?, ?, ?, ?, ?, ?, ?)'
+          ).bind(
+            crypto.randomUUID(),
+            matchId,
+            standing.playerId,
+            standing.nickname,
+            standing.rank,
+            score,
+            lapTimeSeconds,
+            grade
+          )
+        );
+      }
+
+      await this.env.DB.batch(statements);
+    } catch (err) {
+      console.error('Failed to persist match to D1:', err);
+    }
   }
 
   private broadcastAll(payload: string): void {

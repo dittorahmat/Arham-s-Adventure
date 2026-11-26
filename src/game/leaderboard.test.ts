@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import {
   clearLeaderboard,
+  fetchGlobalLeaderboard,
   formatLapTime,
   LEADERBOARD_STORAGE_KEY,
   loadLeaderboard,
@@ -169,3 +170,74 @@ test('leaderboard persists valid SD grades (1-6) and safely ignores invalid grad
   assert.equal(sanitized.length, 1);
   assert.equal(sanitized[0].grade, undefined);
 });
+
+test('fetchGlobalLeaderboard returns global D1 entries when online and builds filter query', async () => {
+  const store = createMemoryStorage();
+  let requestedUrl = '';
+  const mockFetch = (async (input: string | URL | Request) => {
+    requestedUrl = String(input);
+    return new Response(
+      JSON.stringify({
+        entries: [
+          {
+            id: 'g-1',
+            playerId: 'p-1',
+            nickname: 'Arham',
+            rank: 1,
+            score: 1500,
+            lapTimeSeconds: 32.4,
+            grade: 5,
+            mode: 'classic',
+            difficulty: 'medium',
+            subject: 'matematika',
+            achievedAt: '2026-11-26T10:00:00.000Z',
+          },
+        ],
+      }),
+      { status: 200, headers: { 'Content-Type': 'application/json' } }
+    );
+  }) as typeof fetch;
+
+  const result = await fetchGlobalLeaderboard({
+    mode: 'classic',
+    difficulty: 'medium',
+    fetcher: mockFetch,
+    storage: store,
+  });
+
+  assert.equal(requestedUrl, '/api/leaderboard?mode=classic&difficulty=medium');
+  assert.equal(result.source, 'global');
+  assert.equal(result.entries.length, 1);
+  assert.equal(result.entries[0].nickname, 'Arham');
+  assert.equal(result.entries[0].lapTimeSeconds, 32.4);
+});
+
+test('fetchGlobalLeaderboard falls back to localStorage entries when offline or request fails', async () => {
+  const store = createMemoryStorage();
+  const localBuilt = recordFastestLap([], {
+    lapTimeSeconds: 44.5,
+    score: 1100,
+    rank: 1,
+    correctCount: 4,
+    totalGates: 5,
+    subject: 'ipa',
+    grade: 5,
+    achievedAt: '2026-11-26T09:00:00.000Z',
+  }).entries;
+  saveLeaderboard(localBuilt, store);
+
+  const offlineFetch = (async () => {
+    throw new Error('NetworkError: offline');
+  }) as unknown as typeof fetch;
+
+  const result = await fetchGlobalLeaderboard({
+    fetcher: offlineFetch,
+    storage: store,
+  });
+
+  assert.equal(result.source, 'local');
+  assert.equal(result.entries.length, 1);
+  assert.equal(result.entries[0].lapTimeSeconds, 44.5);
+  assert.equal(result.entries[0].subject, 'ipa');
+});
+
