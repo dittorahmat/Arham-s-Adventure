@@ -141,7 +141,7 @@ export const TitleOverlay: React.FC<TitleOverlayProps> = ({
   const difficultyMeta = DIFFICULTY_CATALOG[selectedDifficulty];
 
   return (
-    <div className="pointer-events-none fixed inset-0 z-20 flex flex-col justify-between p-3 sm:p-5 lg:p-7">
+    <div className="pointer-events-none fixed inset-0 z-20 flex flex-col justify-between overflow-y-auto p-3 sm:p-5 lg:p-7">
       {/* Main Left-Third Negative-Space Lockup & Controls */}
       <div className="my-auto flex max-w-xl flex-col items-start gap-2.5 sm:gap-3.5">
         {/* Bespoke Inline SVG Title Emblem Lockup */}

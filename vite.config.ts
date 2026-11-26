@@ -116,6 +116,17 @@ export default defineConfig(() => {
         '@': path.resolve(__dirname, '.'),
       },
     },
+    build: {
+      rolldownOptions: {
+        output: {
+          manualChunks(id: string) {
+            if (id.includes('node_modules/three')) {
+              return 'vendor-three';
+            }
+          },
+        },
+      },
+    },
     server: {
       allowedHosts: true as const,
       // HMR is disabled in AI Studio via DISABLE_HMR env var.
