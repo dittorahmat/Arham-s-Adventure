@@ -66,13 +66,14 @@ Keep simulation/domain logic decoupled from React UI and Three.js rendering:
 7. **No `backdrop-filter` Over WebGL**: Never apply `backdrop-blur` / `backdrop-filter` on HUD or modal layers over the live WebGL canvas; use solid or `rgba(...)` backgrounds instead.
 
 ### Game Shell, Accessibility & Controls
-1. **State Mirroring**: Always keep `document.body.dataset.state` synced to `'title' | 'playing' | 'paused' | 'replay' | 'gameover'`.
-2. **Start & Testability Hooks**:
+1. **Viewport Fit (No Fold Clipping)**: `TitleOverlay.tsx` and HUD overlays must fit cleanly above the fold without vertical or horizontal clipping on both standard laptop viewports (`1280x800`) and mobile viewports (`375x812`, `390x844`). Keep action rows (`Mabar`, `Top Skor`, `Misi Harian`) compact enough to avoid unintended wrapping/clipping on `375px` width.
+2. **State Mirroring**: Always keep `document.body.dataset.state` synced to `'title' | 'playing' | 'paused' | 'replay' | 'gameover'`.
+3. **Start & Testability Hooks**:
    - Keep `data-start="true"` on the primary start CTA.
    - Preserve URL query hooks: `?autostart=1`, `?grade=<1..6>`, `?difficulty=<easy|medium|hard>`, `?mode=<random|classic|tile_fall|ice_slide|laser_dash|honey_drop>`, `?preview_replay=1`, and `?preview_gameover=1`.
    - Call `e.currentTarget.blur()` on clickable HUD/title buttons so pressing `Space` during gameplay jumps instead of re-clicking focused buttons.
-3. **Input Safety**: Always clear held keyboard/touch inputs on `window` `blur`, `visibilitychange` (hidden), pause, and restart. Never use `window.alert` or `window.open`.
-4. **Mobile Touch & Haptics**:
+4. **Input Safety**: Always clear held keyboard/touch inputs on `window` `blur`, `visibilitychange` (hidden), pause, and restart. Never use `window.alert` or `window.open`.
+5. **Mobile Touch & Haptics**:
    - Guard **all** `navigator.vibrate()` calls through `triggerHapticFeedback()` in `src/game/touchControls.ts` so unsupported browsers (e.g., iOS Safari / desktop / restricted policies) fail silently without throwing.
    - `TouchControls.tsx` triggers `jump` and `dive` haptics on touch press.
    - `ArhamGameEngine.processEvents()` maps player-only (`ev.isPlayer === true`) collision events (`bumper`, `sweeper`, `laser_hit`, `tile_fake` / `tile_crack`) and quiz answer outcomes (`quiz_correct`, `quiz_wrong`) via `resolvePhysicsEventHaptic()` and invokes `triggerHapticFeedback()`. Never vibrate for AI bot events.

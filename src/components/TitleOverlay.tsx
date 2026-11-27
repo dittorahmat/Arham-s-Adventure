@@ -153,11 +153,11 @@ export const TitleOverlay: React.FC<TitleOverlayProps> = ({
   const difficultyMeta = DIFFICULTY_CATALOG[selectedDifficulty];
 
   return (
-    <div className="pointer-events-none fixed inset-0 z-20 flex flex-col justify-between overflow-y-auto p-3 sm:p-5 lg:p-7">
+    <div className="pointer-events-none fixed inset-0 z-20 flex flex-col justify-between overflow-y-auto p-3 sm:p-4 lg:p-5">
       {/* Main Left-Third Negative-Space Lockup & Controls */}
-      <div className="my-auto flex max-w-xl flex-col items-start gap-2.5 sm:gap-3.5">
+      <div className="my-auto flex max-w-xl flex-col items-start gap-2 sm:gap-2.5">
         {/* Bespoke Inline SVG Title Emblem Lockup */}
-        <div className="w-full max-w-[265px] sm:max-w-[365px]">
+        <div className="w-full max-w-[230px] sm:max-w-[300px]">
           <svg
             viewBox="0 0 460 190"
             role="img"
@@ -240,7 +240,7 @@ export const TitleOverlay: React.FC<TitleOverlayProps> = ({
         </div>
 
         {/* Grade + Difficulty + Game Mode + Subject Filter Compact Toy Setup Panel */}
-        <div className="pointer-events-auto w-full max-w-xl space-y-2 rounded-2xl border-[3px] border-[#1e293b] bg-[#fffdf5]/95 p-2.5 sm:space-y-2.5 sm:p-3 toy-panel">
+        <div className="pointer-events-auto w-full max-w-xl space-y-1.5 rounded-2xl border-[3px] border-[#1e293b] bg-[#fffdf5]/95 p-2 sm:space-y-2 sm:p-2.5 toy-panel">
           {/* Guest Nickname Input */}
           <div>
             <div className="mb-1 flex items-center justify-between text-xs font-bold text-[#334155]">
@@ -458,12 +458,12 @@ export const TitleOverlay: React.FC<TitleOverlayProps> = ({
         </div>
 
         {/* Primary Start CTA paired with animated Arham character mascot + optional Top Skor & Misi Harian buttons */}
-        <div className="pointer-events-auto flex flex-col items-start gap-2.5">
-          <div className="flex items-center gap-3">
-            <div className="flex h-[60px] w-[60px] shrink-0 items-center justify-center rounded-2xl border-[3px] border-[#1e293b] bg-[#e0f2fe] p-1 shadow-[0_5px_0_#1e293b] sm:h-[72px] sm:w-[72px]">
+        <div className="pointer-events-auto flex flex-col items-start gap-2">
+          <div className="flex items-center gap-2.5 sm:gap-3">
+            <div className="flex h-[52px] w-[52px] shrink-0 items-center justify-center rounded-2xl border-[3px] border-[#1e293b] bg-[#e0f2fe] p-1 shadow-[0_5px_0_#1e293b] sm:h-[60px] sm:w-[60px]">
               <ArhamSprite
                 mood="idle-cheer"
-                size={58}
+                size={48}
                 label="Karakter Arham melambai menyapa pemain"
               />
             </div>
@@ -475,13 +475,13 @@ export const TitleOverlay: React.FC<TitleOverlayProps> = ({
                 if (!ensureValidNickname()) return;
                 onStart();
               }}
-              className="toy-btn cursor-pointer whitespace-nowrap rounded-2xl border-[3px] border-[#1e293b] bg-[#facc15] px-6 py-3.5 font-display text-xl font-bold tracking-wide text-[#0f172a] focus-visible:outline-4 focus-visible:outline-white sm:px-7 sm:py-4 sm:text-2xl"
+              className="toy-btn cursor-pointer whitespace-nowrap rounded-2xl border-[3px] border-[#1e293b] bg-[#facc15] px-5 py-2.5 font-display text-lg font-bold tracking-wide text-[#0f172a] focus-visible:outline-4 focus-visible:outline-white sm:px-6 sm:py-3 sm:text-xl"
             >
               Mulai Petualangan
             </button>
           </div>
 
-          <div className="flex flex-wrap items-center gap-2">
+          <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
             {onOpenLobby && (
               <button
                 type="button"
@@ -491,7 +491,7 @@ export const TitleOverlay: React.FC<TitleOverlayProps> = ({
                   if (!ensureValidNickname()) return;
                   onOpenLobby();
                 }}
-                className="toy-btn flex cursor-pointer items-center gap-2 whitespace-nowrap rounded-2xl border-[3px] border-[#1e293b] bg-emerald-400 px-3.5 py-2.5 font-display text-sm font-bold text-[#0f172a] focus-visible:outline-4 focus-visible:outline-white sm:px-4 sm:py-3 sm:text-base"
+                className="toy-btn flex cursor-pointer items-center gap-1.5 whitespace-nowrap rounded-2xl border-[3px] border-[#1e293b] bg-emerald-400 px-2.5 py-1.5 font-display text-xs font-bold text-[#0f172a] focus-visible:outline-4 focus-visible:outline-white sm:gap-2 sm:px-3.5 sm:py-2 sm:text-sm"
               >
                 Mabar
               </button>
@@ -503,9 +503,9 @@ export const TitleOverlay: React.FC<TitleOverlayProps> = ({
                 e.currentTarget.blur();
                 handleOpenTopScores();
               }}
-              className="toy-btn flex cursor-pointer items-center gap-2 whitespace-nowrap rounded-2xl border-[3px] border-[#1e293b] bg-[#fffdf5] px-3.5 py-2.5 font-display text-sm font-bold text-[#0f172a] focus-visible:outline-4 focus-visible:outline-white sm:px-4 sm:py-3 sm:text-base"
+              className="toy-btn flex cursor-pointer items-center gap-1.5 whitespace-nowrap rounded-2xl border-[3px] border-[#1e293b] bg-[#fffdf5] px-2.5 py-1.5 font-display text-xs font-bold text-[#0f172a] focus-visible:outline-4 focus-visible:outline-white sm:gap-2 sm:px-3.5 sm:py-2 sm:text-sm"
             >
-              <svg viewBox="0 0 24 24" className="h-5 w-5 shrink-0" fill="none" aria-hidden="true">
+              <svg viewBox="0 0 24 24" className="h-4 w-4 shrink-0 sm:h-5 sm:w-5" fill="none" aria-hidden="true">
                 <path
                   d="M7 4h10v5a5 5 0 0 1-10 0V4Z"
                   fill="#facc15"
@@ -531,9 +531,9 @@ export const TitleOverlay: React.FC<TitleOverlayProps> = ({
                 e.currentTarget.blur();
                 handleOpenDailyChallenges();
               }}
-              className="toy-btn flex cursor-pointer items-center gap-2 whitespace-nowrap rounded-2xl border-[3px] border-[#1e293b] bg-[#fffdf5] px-3.5 py-2.5 font-display text-sm font-bold text-[#0f172a] focus-visible:outline-4 focus-visible:outline-white sm:px-4 sm:py-3 sm:text-base"
+              className="toy-btn flex cursor-pointer items-center gap-1.5 whitespace-nowrap rounded-2xl border-[3px] border-[#1e293b] bg-[#fffdf5] px-2.5 py-1.5 font-display text-xs font-bold text-[#0f172a] focus-visible:outline-4 focus-visible:outline-white sm:gap-2 sm:px-3.5 sm:py-2 sm:text-sm"
             >
-              <svg viewBox="0 0 24 24" className="h-5 w-5 shrink-0" fill="none" aria-hidden="true">
+              <svg viewBox="0 0 24 24" className="h-4 w-4 shrink-0 sm:h-5 sm:w-5" fill="none" aria-hidden="true">
                 <rect x="4" y="5" width="16" height="15" rx="3" fill="#e0f2fe" stroke="#1e293b" strokeWidth="2.2" />
                 <path d="M8 3v4M16 3v4M4 9.5h16" stroke="#1e293b" strokeWidth="2.2" strokeLinecap="round" />
                 <path d="M8.5 14.2 11 16.7 15.8 11.8" stroke="#16a34a" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
@@ -541,7 +541,7 @@ export const TitleOverlay: React.FC<TitleOverlayProps> = ({
               <span>Misi Harian</span>
               <span
                 data-testid="daily-challenges-count"
-                className={`rounded-lg border-2 border-[#1e293b] px-1.5 py-0.5 text-xs font-extrabold tabular-nums ${
+                className={`rounded-lg border-2 border-[#1e293b] px-1.5 py-0.5 text-[11px] font-extrabold tabular-nums sm:text-xs ${
                   dailyDoneCount === dailyTotalCount
                     ? 'bg-[#22c55e] text-white'
                     : 'bg-[#38bdf8] text-[#0f172a]'
@@ -557,11 +557,11 @@ export const TitleOverlay: React.FC<TitleOverlayProps> = ({
       </div>
 
       {/* Single Flat Borderless Control Hint Line in Bottom Safe Margin */}
-      <div className="w-full text-center sm:text-left">
-        <p className="text-xs font-bold text-white hud-stroke-sm lg:hidden">
+      <div className="mt-1 w-full text-center sm:text-left">
+        <p className="text-[11px] font-bold text-white hud-stroke-sm lg:hidden">
           HP / Tablet: Stik Analog Kiri Gerak · Tombol Kanan Lompat &amp; Terjang · Auto Lari Tersedia
         </p>
-        <p className="hidden text-sm font-bold text-white hud-stroke-sm lg:block">
+        <p className="hidden text-xs font-bold text-white hud-stroke-sm lg:block">
           WASD / Panah Gerak · Spasi Lompat · Shift Terjang · Esc Jeda · Kontrol Sentuh Otomatis di HP
         </p>
       </div>
