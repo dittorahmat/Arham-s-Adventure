@@ -263,8 +263,6 @@ export default function App() {
             }
             const client = new MultiplayerClient({
               onRaceSnapshot: (poses) => engineRef.current?.pushRemotePoses(poses),
-              onTileStateUpdate: (u) =>
-                engineRef.current?.applyTileStateUpdate(u.tileId, u.state, u.shakeTimer, u.revealPop),
             });
             if (ws) {
               client.attachSocket(ws);
@@ -272,6 +270,9 @@ export default function App() {
             engineRef.current?.setMultiplayerSession({
               client,
               localPlayerId: guestPlayerId,
+              remotePlayerIds: room.participants
+                .filter((p) => p.id !== guestPlayerId && !p.isAi)
+                .map((p) => p.id),
               seed: meta.seed,
               matchStartTime: meta.matchStartTime,
             });

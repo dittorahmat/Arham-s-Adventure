@@ -1831,10 +1831,10 @@ export class ArhamGameEngine {
               vx: p0.vx,
               vy: p0.vy,
               vz: p0.vz,
-              rotY: p0.facingAngle,
+              rotY: p0.facingYaw,
               timestamp: Date.now(),
             });
-            if (p0.finished && !this.multiplayerFinishSent) {
+            if (p0.finished && p0.finishTime !== null && !this.multiplayerFinishSent) {
               this.multiplayerFinishSent = true;
               this.multiplayerSession.client.sendFinish(p0.finishTime * 1000);
             }
@@ -1851,7 +1851,7 @@ export class ArhamGameEngine {
               this.racers[i].x = _interpPoseScratch.x;
               this.racers[i].y = _interpPoseScratch.y;
               this.racers[i].z = _interpPoseScratch.z;
-              this.racers[i].facingAngle = _interpPoseScratch.rotY;
+              this.racers[i].facingYaw = _interpPoseScratch.rotY;
             } else {
               const aiIn = computeAiInput(this.racers[i], this.course, this.elapsedTime);
               stepRacerPhysics(this.racers[i], aiIn, this.course, dt, this.elapsedTime, events);
